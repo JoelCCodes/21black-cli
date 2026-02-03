@@ -2,7 +2,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createDeck, shuffleDeck, createGameState, calculateHandTotal, dealInitialCards, checkForBlackjack, playerHit, playerStand, playerDouble, isDealerDone, dealerDrawOne } from './game.js';
+import { createDeck, shuffleDeck, createGameState, calculateHandTotal, dealInitialCards, checkForBlackjack, playerHit, playerStand, playerDouble, isDealerDone, dealerDrawOne, settleRound, getWinRate } from './game.js';
 
 // 4.1 — Deck tests
 describe('createDeck', () => {
@@ -1111,5 +1111,223 @@ describe('dealerDrawOne', () => {
     state.reshuffled = true;
     const result = dealerDrawOne(state);
     assert.equal(result.reshuffled, true);
+  });
+});
+
+// 4.6 — Bet settlement tests
+describe('settleRound', () => {
+  const card = (rank, suit = '♠') => {
+    let value;
+    if (rank === 'A') value = 11;
+    else if (['J', 'Q', 'K'].includes(rank)) value = 10;
+    else value = parseInt(rank, 10);
+    return { suit, rank, value };
+  };
+
+  const makeState = (playerCards, dealerCards, bet = 100) => {
+    const state = createGameState();
+    state.playerHand = playerCards;
+    state.dealerHand = dealerCards;
+    state.bet = bet;
+    state.chips = 900; // 1000 - 100 bet
+    state.phase = 'dealerTurn';
+    state.deck = [card('2'), card('3')]; // leftover deck
+    return state;
+  };
+
+  it('player wins 1:1 when player total > dealer total', () => {
+    // Player: 20, Dealer: 18
+    const state = makeState([card('K'), card('Q')], [card('10'), card('8')]);
+    const result = settleRound(state);
+    assert.equal(result.result.outcome, 'win');
+    assert.equal(result.result.chipChange, 100);
+    assert.equal(result.chips, 1100); // 900 + 100 (bet returned) + 100 (win)
+  });
+
+  it('dealer wins when dealer total > player total', () => {
+    // Player: 17, Dealer: 19
+    const state = makeState([card('10'), card('7')], [card('K'), card('9')]);
+    const result = settleRound(state);
+    assert.equal(result.result.outcome, 'lose');
+    assert.equal(result.result.chipChange, -100);
+    assert.equal(result.chips, 900); // bet already deducted
+  });
+
+  it('push when totals are equal (bet returned)', () => {
+    // Player: 18, Dealer: 18
+    const state = makeState([card('10'), card('8')], [card('K'), card('8', '♥')]);
+    const result = settleRound(state);
+    assert.equal(result.result.outcome, 'push');
+    assert.equal(result.result.chipChange, 0);
+    assert.equal(result.chips, 1000); // 900 + 100 (bet returned)
+  });
+
+  it('player wins when dealer busts', () => {
+    // Player: 15, Dealer: 25 (bust)
+    const state = makeState([card('10'), card('5')], [card('K'), card('Q'), card('5', '♥')]);
+    const result = settleRound(state);
+    assert.equal(result.result.outcome, 'win');
+    assert.equal(result.result.message, 'Dealer busts!');
+    assert.equal(result.result.chipChange, 100);
+    assert.equal(result.chips, 1100);
+  });
+
+  it('sets phase to result', () => {
+    const state = makeState([card('K'), card('Q')], [card('10'), card('8')]);
+    const result = settleRound(state);
+    assert.equal(result.phase, 'result');
+  });
+
+  it('handles larger bets correctly ($500 win)', () => {
+    const state = makeState([card('K'), card('Q')], [card('10'), card('8')], 500);
+    state.chips = 500; // 1000 - 500
+    const result = settleRound(state);
+    assert.equal(result.result.chipChange, 500);
+    assert.equal(result.chips, 1500); // 500 + 500 + 500
+  });
+
+  it('handles larger bets correctly ($500 loss)', () => {
+    const state = makeState([card('10'), card('7')], [card('K'), card('9')], 500);
+    state.chips = 500;
+    const result = settleRound(state);
+    assert.equal(result.result.chipChange, -500);
+    assert.equal(result.chips, 500); // bet already gone
+  });
+
+  it('push at 21 (both have 21 from multi-card hands)', () => {
+    // Player: 7+7+7=21, Dealer: 10+5+6=21
+    const state = makeState(
+      [card('7'), card('7', '♥'), card('7', '♦')],
+      [card('10'), card('5'), card('6')]
+    );
+    const result = settleRound(state);
+    assert.equal(result.result.outcome, 'push');
+    assert.equal(result.result.chipChange, 0);
+  });
+
+  it('updates stats.handsPlayed on win', () => {
+    const state = makeState([card('K'), card('Q')], [card('10'), card('8')]);
+    const result = settleRound(state);
+    assert.equal(result.stats.handsPlayed, 1);
+    assert.equal(result.stats.handsWon, 1);
+  });
+
+  it('updates stats.handsPlayed on loss', () => {
+    const state = makeState([card('10'), card('7')], [card('K'), card('9')]);
+    const result = settleRound(state);
+    assert.equal(result.stats.handsPlayed, 1);
+    assert.equal(result.stats.handsLost, 1);
+  });
+
+  it('updates stats.handsPushed on push', () => {
+    const state = makeState([card('10'), card('8')], [card('K'), card('8', '♥')]);
+    const result = settleRound(state);
+    assert.equal(result.stats.handsPlayed, 1);
+    assert.equal(result.stats.handsPushed, 1);
+  });
+
+  it('updates peakChips when winning increases chip count', () => {
+    const state = makeState([card('K'), card('Q')], [card('10'), card('8')], 200);
+    state.chips = 800; // 1000 - 200
+    const result = settleRound(state);
+    assert.equal(result.stats.peakChips, 1200); // 800 + 200 + 200
+  });
+
+  it('does not increase peakChips on loss', () => {
+    const state = makeState([card('10'), card('7')], [card('K'), card('9')]);
+    state.stats.peakChips = 1500; // previous peak
+    const result = settleRound(state);
+    assert.equal(result.stats.peakChips, 1500); // unchanged
+  });
+
+  it('accumulates stats across multiple rounds', () => {
+    const state = makeState([card('K'), card('Q')], [card('10'), card('8')]);
+    state.stats.handsPlayed = 5;
+    state.stats.handsWon = 3;
+    state.stats.handsLost = 1;
+    state.stats.handsPushed = 1;
+    const result = settleRound(state);
+    assert.equal(result.stats.handsPlayed, 6);
+    assert.equal(result.stats.handsWon, 4);
+    assert.equal(result.stats.handsLost, 1);
+    assert.equal(result.stats.handsPushed, 1);
+  });
+
+  it('does not mutate original state', () => {
+    const state = makeState([card('K'), card('Q')], [card('10'), card('8')]);
+    const originalChips = state.chips;
+    const originalPhase = state.phase;
+    settleRound(state);
+    assert.equal(state.chips, originalChips);
+    assert.equal(state.phase, originalPhase);
+    assert.equal(state.result, null);
+    assert.equal(state.stats.handsPlayed, 0);
+  });
+
+  it('preserves other state fields', () => {
+    const state = makeState([card('K'), card('Q')], [card('10'), card('8')]);
+    state.reshuffled = true;
+    const result = settleRound(state);
+    assert.equal(result.reshuffled, true);
+    assert.equal(result.deck.length, 2);
+    assert.equal(result.bet, 100);
+  });
+
+  it('player wins with soft hand vs dealer', () => {
+    // Player: A+8 = soft 19, Dealer: 10+8 = 18
+    const state = makeState([card('A'), card('8')], [card('10'), card('8', '♥')]);
+    const result = settleRound(state);
+    assert.equal(result.result.outcome, 'win');
+  });
+
+  it('dealer wins with higher soft hand', () => {
+    // Player: 10+7 = 17, Dealer: A+8 = soft 19
+    const state = makeState([card('10'), card('7')], [card('A'), card('8')]);
+    const result = settleRound(state);
+    assert.equal(result.result.outcome, 'lose');
+  });
+
+  it('does not count dealer bust win as blackjack', () => {
+    const state = makeState([card('10'), card('5')], [card('K'), card('Q'), card('5', '♥')]);
+    const result = settleRound(state);
+    assert.equal(result.stats.blackjacks, 0);
+  });
+});
+
+// 4.9 — Stats tests (getWinRate)
+describe('getWinRate', () => {
+  it('returns "0.0" when no hands played', () => {
+    const stats = createGameState().stats;
+    assert.equal(getWinRate(stats), '0.0');
+  });
+
+  it('calculates 100% win rate correctly', () => {
+    const stats = { ...createGameState().stats, handsPlayed: 5, handsWon: 5 };
+    assert.equal(getWinRate(stats), '100.0');
+  });
+
+  it('calculates 0% win rate correctly', () => {
+    const stats = { ...createGameState().stats, handsPlayed: 5, handsWon: 0 };
+    assert.equal(getWinRate(stats), '0.0');
+  });
+
+  it('calculates 50% win rate correctly', () => {
+    const stats = { ...createGameState().stats, handsPlayed: 10, handsWon: 5 };
+    assert.equal(getWinRate(stats), '50.0');
+  });
+
+  it('calculates fractional win rate with one decimal', () => {
+    const stats = { ...createGameState().stats, handsPlayed: 3, handsWon: 1 };
+    assert.equal(getWinRate(stats), '33.3');
+  });
+
+  it('calculates 66.7% win rate', () => {
+    const stats = { ...createGameState().stats, handsPlayed: 3, handsWon: 2 };
+    assert.equal(getWinRate(stats), '66.7');
+  });
+
+  it('returns string type', () => {
+    const stats = { ...createGameState().stats, handsPlayed: 5, handsWon: 3 };
+    assert.equal(typeof getWinRate(stats), 'string');
   });
 });

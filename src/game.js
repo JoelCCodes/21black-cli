@@ -223,6 +223,59 @@ export function dealerDrawOne(state) {
   };
 }
 
+export function getWinRate(stats) {
+  if (stats.handsPlayed === 0) return '0.0';
+  return (stats.handsWon / stats.handsPlayed * 100).toFixed(1);
+}
+
+export function settleRound(state) {
+  const playerTotal = calculateHandTotal(state.playerHand).total;
+  const dealerTotal = calculateHandTotal(state.dealerHand).total;
+
+  const stats = { ...state.stats, handsPlayed: state.stats.handsPlayed + 1 };
+  let outcome, message, chipChange, newChips;
+
+  if (dealerTotal > 21) {
+    // Dealer busts — player wins 1:1
+    outcome = 'win';
+    message = 'Dealer busts!';
+    chipChange = state.bet;
+    newChips = state.chips + state.bet + state.bet; // return bet + win
+    stats.handsWon++;
+  } else if (playerTotal > dealerTotal) {
+    // Player wins 1:1
+    outcome = 'win';
+    message = 'You win!';
+    chipChange = state.bet;
+    newChips = state.chips + state.bet + state.bet;
+    stats.handsWon++;
+  } else if (playerTotal < dealerTotal) {
+    // Dealer wins — player loses bet (already deducted)
+    outcome = 'lose';
+    message = 'Dealer wins.';
+    chipChange = -state.bet;
+    newChips = state.chips;
+    stats.handsLost++;
+  } else {
+    // Push — return bet
+    outcome = 'push';
+    message = 'Push!';
+    chipChange = 0;
+    newChips = state.chips + state.bet;
+    stats.handsPushed++;
+  }
+
+  stats.peakChips = Math.max(stats.peakChips, newChips);
+
+  return {
+    ...state,
+    phase: 'result',
+    chips: newChips,
+    stats,
+    result: { outcome, message, chipChange },
+  };
+}
+
 export function dealInitialCards(state) {
   let deck = [...state.deck];
   let reshuffled = state.reshuffled;
