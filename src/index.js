@@ -195,8 +195,54 @@ async function main() {
       break;
     }
 
-    // TODO: Items 3.4–3.10 will continue the game loop here.
-    // For now, re-loop back to betting after a valid bet (placeholder).
+    // ── 3.4 Deal & Blackjack Check ───────────────────────────────────
+    state = dealInitialCards(state);
+    renderGameScreen(state, calculateHandTotal, getAvailableActions);
+
+    // Brief pause after deal for dramatic effect
+    await sleep(400);
+
+    // Check for blackjack (player and/or dealer)
+    const postBJ = checkForBlackjack(state);
+    if (postBJ.phase === 'result') {
+      // Blackjack detected — show the result
+      state = postBJ;
+      renderGameScreen(state, calculateHandTotal, getAvailableActions);
+      await sleep(2500);
+
+      // Check game over
+      state = checkGameOver(state);
+      if (state.phase === 'gameOver') {
+        renderGameOverScreen(state.chips, state.stats, getWinRate);
+        while (true) {
+          const key = await waitForKey();
+          if (key.toLowerCase() === 'q') cleanExit(0);
+          if (key === '\r' || key === '\n') {
+            // Play again — reset chips, keep stats
+            state = { ...state, chips: 1000, phase: 'betting' };
+            break;
+          }
+        }
+        continue; // back to outer loop (betting)
+      }
+
+      // Clear reshuffled flag after displaying
+      state = { ...state, reshuffled: false };
+
+      // Not game over — prompt for next hand
+      // Wait for ENTER or Q
+      while (true) {
+        const key = await waitForKey();
+        if (key.toLowerCase() === 'q') cleanExit(0);
+        if (key === '\r' || key === '\n') break;
+      }
+      continue; // back to outer loop (betting)
+    }
+
+    // No blackjack — clear reshuffled flag after it's been rendered
+    state = { ...state, reshuffled: false };
+
+    // TODO: Items 3.5–3.10 will continue the game loop here.
   }
 }
 
