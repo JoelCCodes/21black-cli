@@ -34,6 +34,102 @@ if (args.includes('--version')) {
   process.exit(0);
 }
 
-// ─── Game Launch ─────────────────────────────────────────────────────
-// Items 3.1–3.10 will build out the full game loop below.
-// For now, the entry point is ready for CLI usage.
+// ─── Game Imports ────────────────────────────────────────────────────
+
+import {
+  createGameState, createDeck, shuffleDeck, dealInitialCards, calculateHandTotal,
+  checkForBlackjack, playerHit, playerStand, playerDouble, playerSplit,
+  splitHit, splitStand, dealerDrawOne, isDealerDone, settleRound,
+  placeBet, checkGameOver, getAvailableActions, getWinRate,
+} from './game.js';
+
+import {
+  renderWelcomeScreen, renderBettingScreen, renderGameScreen,
+  renderGameOverScreen,
+} from './renderer.js';
+
+import * as readline from 'node:readline';
+
+// ─── Terminal Helpers (Item 3.1) ─────────────────────────────────────
+
+const SHOW_CURSOR = '\x1b[?25h';
+const HIDE_CURSOR = '\x1b[?25l';
+
+/**
+ * Restore terminal to a clean state: show cursor, disable raw mode.
+ * Safe to call multiple times — checks stdin.isRaw first.
+ */
+function restoreTerminal() {
+  process.stdout.write(SHOW_CURSOR);
+  if (process.stdin.isTTY && process.stdin.isRaw) {
+    process.stdin.setRawMode(false);
+  }
+}
+
+/**
+ * Clean exit: restore terminal state, then exit.
+ */
+function cleanExit(code = 0) {
+  restoreTerminal();
+  process.exit(code);
+}
+
+// Catch SIGINT (Ctrl+C) — restore terminal and exit cleanly.
+process.on('SIGINT', () => cleanExit(0));
+
+// Safety net: restore terminal on uncaught errors so we don't leave a broken tty.
+process.on('uncaughtException', (err) => {
+  restoreTerminal();
+  process.stderr.write(`\nFatal: ${err.message}\n`);
+  process.exit(1);
+});
+
+/**
+ * Wait for a single keypress in raw mode.
+ * Returns the key string (lowercase).
+ */
+function waitForKey() {
+  return new Promise((resolve) => {
+    if (process.stdin.isTTY) process.stdin.setRawMode(true);
+    process.stdin.resume();
+    process.stdin.once('data', (data) => {
+      const key = data.toString();
+      // Ctrl+C in raw mode comes as \x03
+      if (key === '\x03') cleanExit(0);
+      if (process.stdin.isTTY) process.stdin.setRawMode(false);
+      process.stdin.pause();
+      resolve(key);
+    });
+  });
+}
+
+/**
+ * Read a line of input (for bet amounts). Uses readline interface.
+ * Returns the trimmed line. Handles 'q'/'Q' as quit.
+ */
+function readLine(prompt = '') {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+    rl.question(prompt, (answer) => {
+      rl.close();
+      resolve(answer.trim());
+    });
+    // Ctrl+C in line mode triggers 'close' without answer — treat as quit
+    rl.on('close', () => {
+      resolve(null);
+    });
+  });
+}
+
+/**
+ * Pause for a given number of milliseconds.
+ */
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// ─── Game Loop (Items 3.2–3.10) ─────────────────────────────────────
+// Placeholder — will be built in subsequent items.
