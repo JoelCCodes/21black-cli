@@ -305,9 +305,59 @@ const renderPlayerArea = (state, calculateHandTotal) => {
   return lines;
 };
 
+// ─── Action Prompt Bar (Item 2.10) ─────────────────────────────────
+
+/**
+ * Render the action prompt bar showing available actions.
+ *
+ * Normal play: [H]it  [S]tand  [D]ouble  [P]plit  [Q]uit
+ *   - Unavailable actions are dimmed
+ *   - [P]lit only shown when split is available
+ *
+ * Split play: Hand N: [H]it  [S]tand
+ *   - Only hit and stand on the active hand
+ *
+ * @param {object} actions - return value from getAvailableActions(state)
+ * @param {object} state - game state (for split hand index)
+ * @returns {string[]} array of frame lines: divider + action row + bottom border
+ */
+const renderActionPrompt = (actions, state) => {
+  const lines = [];
+  lines.push(frameDivider());
+
+  const isSplit = state && state.splitHands !== undefined;
+
+  if (isSplit && (actions.splitHit || actions.splitStand)) {
+    // Split mode: "Hand N: [H]it  [S]tand"
+    const handNum = (state.activeHandIndex || 0) + 1;
+    const parts = [];
+    parts.push(bold(`Hand ${handNum}:`));
+    parts.push(actions.splitHit ? bold('[H]') + 'it' : dim('[H]it'));
+    parts.push(actions.splitStand ? bold('[S]') + 'tand' : dim('[S]tand'));
+    parts.push(bold('[Q]') + 'uit');
+    lines.push(frameLine(parts.join('  ')));
+  } else {
+    // Normal mode: [H]it  [S]tand  [D]ouble  [P]plit  [Q]uit
+    const parts = [];
+    parts.push(actions.hit ? bold('[H]') + 'it' : dim('[H]it'));
+    parts.push(actions.stand ? bold('[S]') + 'tand' : dim('[S]tand'));
+    parts.push(actions.double ? bold('[D]') + 'ouble' : dim('[D]ouble'));
+    // Only show [P]lit when split is available
+    if (actions.split) {
+      parts.push(bold('[P]') + 'lit');
+    }
+    parts.push(actions.quit ? bold('[Q]') + 'uit' : dim('[Q]uit'));
+    lines.push(frameLine(parts.join('  ')));
+  }
+
+  lines.push(frameBottom());
+  return lines;
+};
+
 export {
   RESET, red, green, yellow, cyan, magenta, bold, dim, formatChips,
   stripAnsi, FRAME_INNER, FRAME_OUTER,
   frameLine, frameCenter, frameTop, frameBottom, frameDivider, frameEmpty, frameMargin,
   renderCard, renderHand, renderHeader, renderStatusBar, renderDealerArea, renderPlayerArea,
+  renderActionPrompt,
 };
