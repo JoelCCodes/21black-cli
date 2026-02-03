@@ -2,7 +2,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createDeck, shuffleDeck, createGameState, calculateHandTotal, dealInitialCards, checkForBlackjack, playerHit, playerStand, playerDouble } from './game.js';
+import { createDeck, shuffleDeck, createGameState, calculateHandTotal, dealInitialCards, checkForBlackjack, playerHit, playerStand, playerDouble, isDealerDone, dealerDrawOne } from './game.js';
 
 // 4.1 — Deck tests
 describe('createDeck', () => {
@@ -933,5 +933,183 @@ describe('playerDouble', () => {
     const result = playerDouble(state);
     assert.equal(result.bet, 1000);
     assert.equal(result.chips, 0); // 500 - 500
+  });
+});
+
+// 4.5 — Dealer logic tests
+describe('isDealerDone', () => {
+  const card = (rank, suit = '♠') => {
+    let value;
+    if (rank === 'A') value = 11;
+    else if (['J', 'Q', 'K'].includes(rank)) value = 10;
+    else value = parseInt(rank, 10);
+    return { suit, rank, value };
+  };
+
+  const makeState = (dealerCards) => {
+    const state = createGameState();
+    state.dealerHand = dealerCards;
+    state.phase = 'dealerTurn';
+    return state;
+  };
+
+  it('returns false when dealer total is below 17', () => {
+    const state = makeState([card('8'), card('5')]); // 13
+    assert.equal(isDealerDone(state), false);
+  });
+
+  it('returns false when dealer total is 16', () => {
+    const state = makeState([card('10'), card('6')]); // 16
+    assert.equal(isDealerDone(state), false);
+  });
+
+  it('returns true when dealer total is exactly 17', () => {
+    const state = makeState([card('10'), card('7')]); // 17
+    assert.equal(isDealerDone(state), true);
+  });
+
+  it('returns true when dealer total is 18', () => {
+    const state = makeState([card('10'), card('8')]); // 18
+    assert.equal(isDealerDone(state), true);
+  });
+
+  it('returns true when dealer total is 21', () => {
+    const state = makeState([card('A'), card('K')]); // 21
+    assert.equal(isDealerDone(state), true);
+  });
+
+  it('returns true when dealer has busted (total > 21)', () => {
+    const state = makeState([card('K'), card('Q'), card('5')]); // 25
+    assert.equal(isDealerDone(state), true);
+  });
+
+  it('stands on soft 17 (A + 6 = soft 17)', () => {
+    const state = makeState([card('A'), card('6')]); // soft 17
+    assert.equal(isDealerDone(state), true);
+  });
+
+  it('stands on soft 18 (A + 7 = soft 18)', () => {
+    const state = makeState([card('A'), card('7')]); // soft 18
+    assert.equal(isDealerDone(state), true);
+  });
+
+  it('returns false when dealer has only low cards (2 + 3 = 5)', () => {
+    const state = makeState([card('2'), card('3')]); // 5
+    assert.equal(isDealerDone(state), false);
+  });
+
+  it('returns true with multi-card 17 (5 + 6 + 6 = 17)', () => {
+    const state = makeState([card('5'), card('6'), card('6')]); // 17
+    assert.equal(isDealerDone(state), true);
+  });
+
+  it('returns true with ace demoted to 1 (A + 9 + 8 = 18)', () => {
+    // A(11) + 9 + 8 = 28 → A(1) + 9 + 8 = 18
+    const state = makeState([card('A'), card('9'), card('8')]); // 18
+    assert.equal(isDealerDone(state), true);
+  });
+});
+
+describe('dealerDrawOne', () => {
+  const card = (rank, suit = '♠') => {
+    let value;
+    if (rank === 'A') value = 11;
+    else if (['J', 'Q', 'K'].includes(rank)) value = 10;
+    else value = parseInt(rank, 10);
+    return { suit, rank, value };
+  };
+
+  const makeState = (dealerCards, deckCards) => {
+    const state = createGameState();
+    state.dealerHand = dealerCards;
+    state.playerHand = [card('K'), card('7')]; // player has 17
+    state.deck = deckCards;
+    state.bet = 100;
+    state.chips = 900;
+    state.phase = 'dealerTurn';
+    return state;
+  };
+
+  it('draws one card from the deck and adds to dealer hand', () => {
+    const state = makeState([card('8'), card('5')], [card('3'), card('4'), card('2')]);
+    const result = dealerDrawOne(state);
+    assert.equal(result.dealerHand.length, 3);
+    assert.equal(result.deck.length, 2);
+  });
+
+  it('draws the top card (last element) from the deck', () => {
+    const topCard = card('K', '♥');
+    const state = makeState([card('8'), card('5')], [card('3'), topCard]);
+    const result = dealerDrawOne(state);
+    assert.equal(result.dealerHand[2].rank, 'K');
+    assert.equal(result.dealerHand[2].suit, '♥');
+  });
+
+  it('does not change the phase', () => {
+    const state = makeState([card('8'), card('5')], [card('3')]);
+    const result = dealerDrawOne(state);
+    assert.equal(result.phase, 'dealerTurn');
+  });
+
+  it('does not mutate original state', () => {
+    const state = makeState([card('8'), card('5')], [card('3'), card('4')]);
+    const originalHandLen = state.dealerHand.length;
+    const originalDeckLen = state.deck.length;
+    dealerDrawOne(state);
+    assert.equal(state.dealerHand.length, originalHandLen);
+    assert.equal(state.deck.length, originalDeckLen);
+  });
+
+  it('preserves player hand unchanged', () => {
+    const state = makeState([card('8'), card('5')], [card('3')]);
+    const result = dealerDrawOne(state);
+    assert.equal(result.playerHand.length, 2);
+    assert.equal(result.playerHand[0].rank, 'K');
+    assert.equal(result.playerHand[1].rank, '7');
+  });
+
+  it('preserves chips and bet unchanged', () => {
+    const state = makeState([card('8'), card('5')], [card('3')]);
+    const result = dealerDrawOne(state);
+    assert.equal(result.chips, 900);
+    assert.equal(result.bet, 100);
+  });
+
+  it('preserves stats unchanged', () => {
+    const state = makeState([card('8'), card('5')], [card('3')]);
+    state.stats.handsPlayed = 5;
+    const result = dealerDrawOne(state);
+    assert.equal(result.stats.handsPlayed, 5);
+  });
+
+  it('can be called multiple times to draw multiple cards', () => {
+    const state = makeState(
+      [card('2'), card('3')], // dealer: 5
+      [card('4'), card('6'), card('K')] // deck
+    );
+    let current = dealerDrawOne(state); // draws K → 15
+    assert.equal(current.dealerHand.length, 3);
+    assert.equal(isDealerDone(current), false);
+
+    current = dealerDrawOne(current); // draws 6 → 21
+    assert.equal(current.dealerHand.length, 4);
+    assert.equal(isDealerDone(current), true);
+  });
+
+  it('works with dealer bust scenario across multiple draws', () => {
+    const state = makeState(
+      [card('10'), card('6')], // dealer: 16
+      [card('9')] // deck — will draw 9 → 25 bust
+    );
+    const result = dealerDrawOne(state);
+    assert.equal(calculateHandTotal(result.dealerHand).total, 25);
+    assert.equal(isDealerDone(result), true);
+  });
+
+  it('preserves reshuffled flag', () => {
+    const state = makeState([card('8'), card('5')], [card('3')]);
+    state.reshuffled = true;
+    const result = dealerDrawOne(state);
+    assert.equal(result.reshuffled, true);
   });
 });

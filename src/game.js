@@ -207,6 +207,22 @@ export function playerDouble(state) {
   };
 }
 
+export function isDealerDone(state) {
+  const { total } = calculateHandTotal(state.dealerHand);
+  return total >= 17;
+}
+
+export function dealerDrawOne(state) {
+  const deck = [...state.deck];
+  const card = deck.pop();
+  const dealerHand = [...state.dealerHand, card];
+  return {
+    ...state,
+    deck,
+    dealerHand,
+  };
+}
+
 export function dealInitialCards(state) {
   let deck = [...state.deck];
   let reshuffled = state.reshuffled;
