@@ -2,7 +2,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createDeck, shuffleDeck, createGameState, calculateHandTotal, dealInitialCards, checkForBlackjack, playerHit } from './game.js';
+import { createDeck, shuffleDeck, createGameState, calculateHandTotal, dealInitialCards, checkForBlackjack, playerHit, playerStand } from './game.js';
 
 // 4.1 — Deck tests
 describe('createDeck', () => {
@@ -709,5 +709,90 @@ describe('playerHit', () => {
     assert.equal(result.phase, 'result');
     assert.equal(result.result.outcome, 'bust');
     assert.equal(calculateHandTotal(result.playerHand).total, 25);
+  });
+});
+
+// playerStand tests (item 1.8, part of 4.4)
+describe('playerStand', () => {
+  const card = (rank, suit = '♠') => {
+    let value;
+    if (rank === 'A') value = 11;
+    else if (['J', 'Q', 'K'].includes(rank)) value = 10;
+    else value = parseInt(rank, 10);
+    return { suit, rank, value };
+  };
+
+  const makeState = (playerCards, bet = 100) => {
+    const state = createGameState();
+    state.playerHand = playerCards;
+    state.dealerHand = [card('8'), card('9')];
+    state.deck = shuffleDeck(createDeck());
+    state.bet = bet;
+    state.chips = 900;
+    state.phase = 'playing';
+    return state;
+  };
+
+  it('sets phase to dealerTurn', () => {
+    const state = makeState([card('K'), card('7')]);
+    const result = playerStand(state);
+    assert.equal(result.phase, 'dealerTurn');
+  });
+
+  it('does not modify player hand', () => {
+    const state = makeState([card('K'), card('7')]);
+    const result = playerStand(state);
+    assert.equal(result.playerHand.length, 2);
+    assert.equal(result.playerHand[0].rank, 'K');
+    assert.equal(result.playerHand[1].rank, '7');
+  });
+
+  it('does not modify dealer hand', () => {
+    const state = makeState([card('K'), card('7')]);
+    const result = playerStand(state);
+    assert.equal(result.dealerHand.length, 2);
+  });
+
+  it('does not modify chips or bet', () => {
+    const state = makeState([card('K'), card('7')], 200);
+    state.chips = 800;
+    const result = playerStand(state);
+    assert.equal(result.chips, 800);
+    assert.equal(result.bet, 200);
+  });
+
+  it('does not modify deck', () => {
+    const state = makeState([card('K'), card('7')]);
+    const deckLen = state.deck.length;
+    const result = playerStand(state);
+    assert.equal(result.deck.length, deckLen);
+  });
+
+  it('does not set result', () => {
+    const state = makeState([card('K'), card('7')]);
+    const result = playerStand(state);
+    assert.equal(result.result, null);
+  });
+
+  it('does not mutate original state', () => {
+    const state = makeState([card('K'), card('7')]);
+    playerStand(state);
+    assert.equal(state.phase, 'playing');
+  });
+
+  it('preserves stats unchanged', () => {
+    const state = makeState([card('K'), card('7')]);
+    state.stats.handsPlayed = 5;
+    state.stats.handsWon = 3;
+    const result = playerStand(state);
+    assert.equal(result.stats.handsPlayed, 5);
+    assert.equal(result.stats.handsWon, 3);
+  });
+
+  it('preserves reshuffled flag', () => {
+    const state = makeState([card('K'), card('7')]);
+    state.reshuffled = true;
+    const result = playerStand(state);
+    assert.equal(result.reshuffled, true);
   });
 });

@@ -165,6 +165,13 @@ export function playerHit(state) {
   };
 }
 
+export function playerStand(state) {
+  return {
+    ...state,
+    phase: 'dealerTurn',
+  };
+}
+
 export function dealInitialCards(state) {
   let deck = [...state.deck];
   let reshuffled = state.reshuffled;
