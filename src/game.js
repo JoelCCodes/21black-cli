@@ -343,17 +343,86 @@ export function playerSplit(state) {
   };
 }
 
+export function splitHit(state) {
+  const deck = [...state.deck];
+  const card = deck.pop();
+  const handIndex = state.activeHandIndex;
+  const hand = state.splitHands[handIndex];
+  const newCards = [...hand.cards, card];
+  const { total } = calculateHandTotal(newCards);
+
+  let newStatus = 'playing';
+  if (total > 21) {
+    newStatus = 'bust';
+  } else if (total === 21) {
+    newStatus = 'stand';
+  }
+
+  const newHand = { ...hand, cards: newCards, status: newStatus };
+  const newSplitHands = state.splitHands.map((h, i) => i === handIndex ? newHand : h);
+
+  // If this hand is done, check if we advance to next hand or dealer turn
+  if (newStatus !== 'playing') {
+    return advanceSplitHand({ ...state, deck, splitHands: newSplitHands });
+  }
+
+  return { ...state, deck, splitHands: newSplitHands };
+}
+
+export function splitStand(state) {
+  const handIndex = state.activeHandIndex;
+  const hand = state.splitHands[handIndex];
+  const newHand = { ...hand, status: 'stand' };
+  const newSplitHands = state.splitHands.map((h, i) => i === handIndex ? newHand : h);
+
+  return advanceSplitHand({ ...state, splitHands: newSplitHands });
+}
+
+function advanceSplitHand(state) {
+  const allDone = state.splitHands.every(h => h.status !== 'playing');
+
+  if (allDone) {
+    return { ...state, phase: 'dealerTurn' };
+  }
+
+  // Move to next hand that is still playing
+  const nextIndex = state.splitHands.findIndex((h, i) => i > state.activeHandIndex && h.status === 'playing');
+  if (nextIndex !== -1) {
+    return { ...state, activeHandIndex: nextIndex };
+  }
+
+  // All hands done (shouldn't reach here due to allDone check above, but safety)
+  return { ...state, phase: 'dealerTurn' };
+}
+
 export function getAvailableActions(state) {
   const playing = state.phase === 'playing';
   const handCards = state.playerHand;
   const { total } = playing ? calculateHandTotal(handCards) : { total: 0 };
   const isSplit = state.splitHands !== undefined;
 
+  // During split, only splitHit and splitStand are available on the active hand
+  if (isSplit && playing) {
+    const activeHand = state.splitHands[state.activeHandIndex];
+    const activeTotal = calculateHandTotal(activeHand.cards).total;
+    return {
+      hit: false,
+      stand: false,
+      double: false,
+      split: false,
+      splitHit: activeTotal < 21 && activeHand.status === 'playing',
+      splitStand: activeHand.status === 'playing',
+      quit: true,
+    };
+  }
+
   return {
-    hit: playing && total < 21 && !isSplit,
-    stand: playing && !isSplit,
-    double: playing && handCards.length === 2 && !isSplit && state.chips >= state.bet,
-    split: playing && handCards.length === 2 && !isSplit && handCards[0].rank === handCards[1].rank && state.chips >= state.bet,
+    hit: playing && total < 21,
+    stand: playing,
+    double: playing && handCards.length === 2 && state.chips >= state.bet,
+    split: playing && handCards.length === 2 && handCards[0].rank === handCards[1].rank && state.chips >= state.bet,
+    splitHit: false,
+    splitStand: false,
     quit: true,
   };
 }
