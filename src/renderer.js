@@ -394,10 +394,13 @@ const renderGameScreen = (state, calculateHandTotal, getAvailableActions) => {
 
   lines.push(frameEmpty());
 
-  // Action prompt bar (only during playing phase)
+  // Action prompt bar (only during playing phase) or result display
   if (state.phase === 'playing') {
     const actions = getAvailableActions(state);
     lines.push(...renderActionPrompt(actions, state));
+  } else if (state.phase === 'result' && state.result) {
+    lines.push(...renderResultDisplay(state.result));
+    lines.push(frameBottom());
   } else {
     lines.push(frameBottom());
   }
@@ -471,6 +474,76 @@ const renderBettingScreen = (chips, error) => {
   process.stdout.write(output);
 };
 
+// ─── Result Display (Item 2.14) ──────────────────────────────────────
+
+/**
+ * Render the result display: large color-coded win/loss/push/blackjack message
+ * with chip change amount.
+ *
+ * Color coding:
+ *   - win: green
+ *   - lose/bust: red
+ *   - push: yellow
+ *   - blackjack: bold magenta
+ *
+ * Shows chip change: "+$150" in green or "-$50" in red.
+ *
+ * @param {object} result - { outcome, message, chipChange }
+ * @returns {string[]} array of frame lines
+ */
+const renderResultDisplay = (result) => {
+  if (!result) return [];
+  const lines = [];
+
+  lines.push(frameDivider());
+  lines.push(frameEmpty());
+
+  // Main result message — large and color-coded
+  let resultMsg;
+  switch (result.outcome) {
+    case 'blackjack':
+      resultMsg = bold(magenta(result.message));
+      break;
+    case 'win':
+      resultMsg = bold(green(result.message));
+      break;
+    case 'lose':
+    case 'bust':
+      resultMsg = bold(red(result.message));
+      break;
+    case 'push':
+      resultMsg = bold(yellow(result.message));
+      break;
+    case 'split':
+      resultMsg = bold(cyan(result.message));
+      break;
+    default:
+      resultMsg = bold(result.message);
+  }
+  lines.push(frameCenter(resultMsg));
+
+  // Chip change line
+  let chipText;
+  if (result.chipChange > 0) {
+    chipText = green(`+${formatChips(result.chipChange)}`);
+  } else if (result.chipChange < 0) {
+    chipText = red(formatChips(result.chipChange));
+  } else {
+    chipText = yellow(formatChips(0));
+  }
+  lines.push(frameCenter(chipText));
+
+  lines.push(frameEmpty());
+
+  // Continue prompt
+  lines.push(frameCenter(dim('Press ENTER for next hand')));
+  lines.push(frameCenter(dim('Press Q to quit')));
+
+  lines.push(frameEmpty());
+
+  return lines;
+};
+
 // ─── Split Player Area (helper for 2.11, full render in 2.16) ────────
 
 /**
@@ -542,6 +615,6 @@ export {
   stripAnsi, FRAME_INNER, FRAME_OUTER,
   frameLine, frameCenter, frameTop, frameBottom, frameDivider, frameEmpty, frameMargin,
   renderCard, renderHand, renderHeader, renderStatusBar, renderDealerArea, renderPlayerArea,
-  renderActionPrompt, renderGameScreen, renderSplitPlayerArea,
+  renderActionPrompt, renderResultDisplay, renderGameScreen, renderSplitPlayerArea,
   renderWelcomeScreen, renderBettingScreen,
 };
