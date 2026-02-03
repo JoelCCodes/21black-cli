@@ -48,7 +48,7 @@ These decisions resolve conflicts and gaps between specs. Builders must follow t
 
 - [x] **1.1 — Deck creation**: Function `createDeck()` returns a standard 52-card array. Card objects: `{ suit, rank, value }`. Suits: ♠ ♥ ♦ ♣. Ranks: 2-10, J, Q, K, A. Values: 2-10 face, J/Q/K=10, A=11.
 - [x] **1.2 — Fisher-Yates shuffle**: `shuffleDeck(deck)` using `Math.random()`. Returns new shuffled array (no mutation).
-- [ ] **1.3 — Game state initialization**: `createGameState()` returns initial state object:
+- [x] **1.3 — Game state initialization**: `createGameState()` returns initial state object:
   ```
   {
     deck: [],

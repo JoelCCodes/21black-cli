@@ -2,7 +2,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createDeck, shuffleDeck } from './game.js';
+import { createDeck, shuffleDeck, createGameState } from './game.js';
 
 // 4.1 — Deck tests
 describe('createDeck', () => {
@@ -81,6 +81,86 @@ describe('createDeck', () => {
       const count = deck.filter(c => c.rank === rank).length;
       assert.equal(count, 4);
     }
+  });
+});
+
+// createGameState tests (item 1.3)
+describe('createGameState', () => {
+  it('returns an object with all required fields', () => {
+    const state = createGameState();
+    assert.ok(Array.isArray(state.deck));
+    assert.ok(Array.isArray(state.playerHand));
+    assert.ok(Array.isArray(state.dealerHand));
+    assert.equal(typeof state.chips, 'number');
+    assert.equal(typeof state.bet, 'number');
+    assert.equal(typeof state.phase, 'string');
+    assert.equal(typeof state.activeHandIndex, 'number');
+    assert.equal(typeof state.reshuffled, 'boolean');
+    assert.equal(typeof state.stats, 'object');
+  });
+
+  it('starts with 1000 chips', () => {
+    const state = createGameState();
+    assert.equal(state.chips, 1000);
+  });
+
+  it('starts with zero bet', () => {
+    const state = createGameState();
+    assert.equal(state.bet, 0);
+  });
+
+  it('starts in welcome phase', () => {
+    const state = createGameState();
+    assert.equal(state.phase, 'welcome');
+  });
+
+  it('starts with empty hands and deck', () => {
+    const state = createGameState();
+    assert.equal(state.deck.length, 0);
+    assert.equal(state.playerHand.length, 0);
+    assert.equal(state.dealerHand.length, 0);
+  });
+
+  it('starts with splitHands undefined', () => {
+    const state = createGameState();
+    assert.equal(state.splitHands, undefined);
+  });
+
+  it('starts with activeHandIndex 0', () => {
+    const state = createGameState();
+    assert.equal(state.activeHandIndex, 0);
+  });
+
+  it('starts with result null', () => {
+    const state = createGameState();
+    assert.equal(state.result, null);
+  });
+
+  it('starts with reshuffled false', () => {
+    const state = createGameState();
+    assert.equal(state.reshuffled, false);
+  });
+
+  it('has correct initial stats', () => {
+    const state = createGameState();
+    assert.deepEqual(state.stats, {
+      handsPlayed: 0,
+      handsWon: 0,
+      handsLost: 0,
+      handsPushed: 0,
+      blackjacks: 0,
+      peakChips: 1000,
+    });
+  });
+
+  it('returns a fresh object each call (no shared references)', () => {
+    const a = createGameState();
+    const b = createGameState();
+    assert.notEqual(a, b);
+    assert.notEqual(a.deck, b.deck);
+    assert.notEqual(a.playerHand, b.playerHand);
+    assert.notEqual(a.dealerHand, b.dealerHand);
+    assert.notEqual(a.stats, b.stats);
   });
 });
 

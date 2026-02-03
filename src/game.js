@@ -20,6 +20,29 @@ export function shuffleDeck(deck) {
   return shuffled;
 }
 
+export function createGameState() {
+  return {
+    deck: [],
+    playerHand: [],
+    dealerHand: [],
+    chips: 1000,
+    bet: 0,
+    phase: 'welcome',
+    splitHands: undefined,
+    activeHandIndex: 0,
+    result: null,
+    reshuffled: false,
+    stats: {
+      handsPlayed: 0,
+      handsWon: 0,
+      handsLost: 0,
+      handsPushed: 0,
+      blackjacks: 0,
+      peakChips: 1000,
+    },
+  };
+}
+
 export function createDeck() {
   const deck = [];
   for (const suit of SUITS) {
