@@ -149,11 +149,55 @@ async function main() {
     if (key === '\r' || key === '\n') break;
   }
 
-  // Transition to betting phase
-  state = { ...state, phase: 'betting' };
-  renderBettingScreen(state.chips);
+  // ── Main game loop (items 3.3–3.10) ────────────────────────────────
+  // Outer loop: one iteration per hand. Exits on quit or game over quit.
 
-  // TODO: Items 3.3–3.10 will continue the game loop here.
+  while (true) {
+    // Transition to betting phase
+    state = { ...state, phase: 'betting', result: null, playerHand: [], dealerHand: [], splitHands: undefined, activeHandIndex: 0 };
+
+    // ── 3.3 Betting Input Loop ─────────────────────────────────────────
+    let betError = null;
+    while (true) {
+      renderBettingScreen(state.chips, betError);
+      process.stdout.write(SHOW_CURSOR);
+      const input = await readLine('  > ');
+      process.stdout.write(HIDE_CURSOR);
+
+      // Ctrl+C / closed stream
+      if (input === null) cleanExit(0);
+
+      // Quit
+      if (input.toLowerCase() === 'q') cleanExit(0);
+
+      // Empty input — re-prompt
+      if (input === '') {
+        betError = 'Enter a bet amount.';
+        continue;
+      }
+
+      // Parse numeric bet
+      const amount = Number(input);
+      if (!Number.isFinite(amount) || !Number.isInteger(amount)) {
+        betError = 'Enter a whole number.';
+        continue;
+      }
+
+      const betResult = placeBet(state, amount);
+      if (!betResult.valid) {
+        betError = betResult.error;
+        continue;
+      }
+
+      // Valid bet — advance state
+      state = betResult.state;
+      betError = null;
+      break;
+    }
+
+    // TODO: Items 3.4–3.10 will continue the game loop here.
+    // For now, re-loop back to betting after a valid bet (placeholder).
+  }
 }
 
 main();
