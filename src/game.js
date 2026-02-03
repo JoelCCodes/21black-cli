@@ -300,6 +300,13 @@ export function placeBet(state, amount) {
   };
 }
 
+export function checkGameOver(state) {
+  if (state.chips < 10) {
+    return { ...state, phase: 'gameOver' };
+  }
+  return state;
+}
+
 export function dealInitialCards(state) {
   let deck = [...state.deck];
   let reshuffled = state.reshuffled;

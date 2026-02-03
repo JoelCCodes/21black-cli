@@ -2,7 +2,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createDeck, shuffleDeck, createGameState, calculateHandTotal, dealInitialCards, checkForBlackjack, playerHit, playerStand, playerDouble, isDealerDone, dealerDrawOne, settleRound, getWinRate, placeBet } from './game.js';
+import { createDeck, shuffleDeck, createGameState, calculateHandTotal, dealInitialCards, checkForBlackjack, playerHit, playerStand, playerDouble, isDealerDone, dealerDrawOne, settleRound, getWinRate, placeBet, checkGameOver } from './game.js';
 
 // 4.1 — Deck tests
 describe('createDeck', () => {
@@ -1455,5 +1455,97 @@ describe('placeBet', () => {
     const state = makeState(1000);
     const result = placeBet(state, 100);
     assert.equal(result.state.phase, 'playing');
+  });
+});
+
+// 4.13 — Game over tests
+describe('checkGameOver', () => {
+  const makeState = (chips, phase = 'result') => {
+    const state = createGameState();
+    state.chips = chips;
+    state.phase = phase;
+    state.result = { outcome: 'lose', message: 'Dealer wins.', chipChange: -100 };
+    state.stats.handsPlayed = 5;
+    state.stats.handsLost = 3;
+    return state;
+  };
+
+  it('sets phase to gameOver when chips < $10', () => {
+    const state = makeState(9);
+    const result = checkGameOver(state);
+    assert.equal(result.phase, 'gameOver');
+  });
+
+  it('sets phase to gameOver when chips are 0', () => {
+    const state = makeState(0);
+    const result = checkGameOver(state);
+    assert.equal(result.phase, 'gameOver');
+  });
+
+  it('sets phase to gameOver when chips are $1', () => {
+    const state = makeState(1);
+    const result = checkGameOver(state);
+    assert.equal(result.phase, 'gameOver');
+  });
+
+  it('does NOT set gameOver when chips are exactly $10', () => {
+    const state = makeState(10);
+    const result = checkGameOver(state);
+    assert.notEqual(result.phase, 'gameOver');
+    assert.equal(result.phase, 'result');
+  });
+
+  it('does NOT set gameOver when chips are above $10', () => {
+    const state = makeState(500);
+    const result = checkGameOver(state);
+    assert.equal(result.phase, 'result');
+  });
+
+  it('does NOT set gameOver when chips are $1000', () => {
+    const state = makeState(1000);
+    const result = checkGameOver(state);
+    assert.equal(result.phase, 'result');
+  });
+
+  it('preserves all other state fields', () => {
+    const state = makeState(5);
+    state.reshuffled = true;
+    state.bet = 100;
+    const result = checkGameOver(state);
+    assert.equal(result.phase, 'gameOver');
+    assert.equal(result.chips, 5);
+    assert.equal(result.reshuffled, true);
+    assert.equal(result.bet, 100);
+    assert.equal(result.stats.handsPlayed, 5);
+    assert.equal(result.stats.handsLost, 3);
+    assert.deepEqual(result.result, { outcome: 'lose', message: 'Dealer wins.', chipChange: -100 });
+  });
+
+  it('does not mutate original state', () => {
+    const state = makeState(5);
+    const originalPhase = state.phase;
+    checkGameOver(state);
+    assert.equal(state.phase, originalPhase);
+  });
+
+  it('works after settlement where player loses all chips', () => {
+    // Simulate: player had $100 chips, bet $100, lost → chips = 0
+    const state = createGameState();
+    state.chips = 0;
+    state.bet = 100;
+    state.phase = 'result';
+    state.result = { outcome: 'lose', message: 'Dealer wins.', chipChange: -100 };
+    const result = checkGameOver(state);
+    assert.equal(result.phase, 'gameOver');
+  });
+
+  it('works after settlement where player has exactly minimum bet', () => {
+    // Simulate: player won and has exactly $10 left
+    const state = createGameState();
+    state.chips = 10;
+    state.phase = 'result';
+    state.result = { outcome: 'win', message: 'You win!', chipChange: 10 };
+    const result = checkGameOver(state);
+    assert.equal(result.phase, 'result'); // can still play
   });
 });
