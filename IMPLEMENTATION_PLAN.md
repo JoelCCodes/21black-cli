@@ -99,8 +99,8 @@ All rendering uses `process.stdout.write()` — no `console.log`.
 
 - [x] **2.1 — ANSI color utilities**: Helper functions: `red(s)`, `green(s)`, `yellow(s)`, `cyan(s)`, `bold(s)`, `dim(s)`, `reset`. Raw `\x1b[` codes, no dependencies. Also `magenta(s)` for blackjack emphasis.
 - [x] **2.2 — Number formatting utility**: `formatChips(n)` returns string like `$1,000`. Use `toLocaleString('en-US')` or manual comma insertion. Used by all screens that display chip amounts. Implement early — needed by almost every renderer item.
-- [ ] **2.3 — Card ASCII art rendering**: `renderCard(card, faceDown?)` — returns array of 5 strings (the 5 lines of a card). Face-down: ░ pattern. Handle 10 (two-digit rank alignment). Color suits: red for ♥♦, white for ♠♣. Dim borders via `dim()`.
-- [ ] **2.4 — Hand rendering (side-by-side)**: `renderHand(cards, options?)` — take array of card objects, render side-by-side by interleaving card line arrays. 1 space between cards. `options.dimmed` for inactive split hand.
+- [x] **2.3 — Card ASCII art rendering**: `renderCard(card, faceDown?)` — returns array of 5 strings (the 5 lines of a card). Face-down: ░ pattern. Handle 10 (two-digit rank alignment). Color suits: red for ♥♦, white for ♠♣. Dim borders via `dim()`.
+- [x] **2.4 — Hand rendering (side-by-side)**: `renderHand(cards, options?)` — take array of card objects, render side-by-side by interleaving card line arrays. 1 space between cards. `options.dimmed` for inactive split hand.
 - [ ] **2.5 — Screen frame**: Box-drawing character frame (╔═╗║╚═╝). Outer frame width = 44 characters total (1 + 42 inner + 1). `frameLine(content)` pads/truncates content to fit within `║...║`. Content centered within 80-column terminal.
 - [ ] **2.6 — Header bar**: Render `♠ BLACKJACK 21 ♠` title centered in frame header row.
 - [ ] **2.7 — Chip/bet status bar**: Render `Chips: $X,XXX` (yellow) and `Bet: $XXX` (white) in sub-header. Use `formatChips()`.
