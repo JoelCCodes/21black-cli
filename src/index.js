@@ -132,4 +132,28 @@ function sleep(ms) {
 }
 
 // ─── Game Loop (Items 3.2–3.10) ─────────────────────────────────────
-// Placeholder — will be built in subsequent items.
+
+async function main() {
+  // Initialize game state and deck
+  let state = createGameState();
+  state = { ...state, deck: shuffleDeck(createDeck()) };
+
+  // ── 3.2 Welcome Flow ──────────────────────────────────────────────
+  process.stdout.write(HIDE_CURSOR);
+  renderWelcomeScreen();
+
+  // Wait for ENTER to start (or Q to quit)
+  while (true) {
+    const key = await waitForKey();
+    if (key.toLowerCase() === 'q') cleanExit(0);
+    if (key === '\r' || key === '\n') break;
+  }
+
+  // Transition to betting phase
+  state = { ...state, phase: 'betting' };
+  renderBettingScreen(state.chips);
+
+  // TODO: Items 3.3–3.10 will continue the game loop here.
+}
+
+main();

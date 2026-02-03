@@ -120,7 +120,7 @@ All timing/pauses live here. `game.js` is never imported with I/O side effects.
 
 - [x] **3.0 — CLI entry point setup**: Add shebang `#!/usr/bin/env node` as first line of `src/index.js`. Make file executable (`chmod +x`). Parse `process.argv` for `--help` (print usage and exit) and `--version` (read version from package.json and exit). All other args or no args launch the game. This enables `21black` command after `npm link`. See `specs/cli-interface.md`.
 - [x] **3.1 — Readline setup & signal handling**: Configure `readline.createInterface` with `process.stdin/stdout`. Handle raw mode for single-keypress input. Catch SIGINT (Ctrl+C) — restore terminal (disable raw mode, show cursor `\x1b[?25h`), exit cleanly. This must be set up first to prevent broken terminal during development.
-- [ ] **3.2 — Welcome flow**: Show welcome screen, wait for ENTER, transition to betting phase.
+- [x] **3.2 — Welcome flow**: Show welcome screen, wait for ENTER, transition to betting phase.
 - [ ] **3.3 — Betting input loop**: Show betting screen, read input (numeric or 'Q'). Validate via `placeBet()`. On invalid: show error message, re-prompt. On 'Q': clean exit. On valid: deal cards.
 - [ ] **3.4 — Deal & blackjack check**: Call `dealInitialCards()`, render, check blackjack via `checkForBlackjack()`. If blackjack (player or dealer), show result with pause, then advance to next hand or game over.
 - [ ] **3.5 — Player action loop**: Read single keypress (H/S/D/P/Q). Check `getAvailableActions()` — reject unavailable actions (beep or ignore). Dispatch to game functions. Re-render after each action. Loop until phase changes from `'playing'`.
