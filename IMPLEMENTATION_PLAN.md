@@ -152,7 +152,7 @@ Use Node.js built-in test runner (`node --test`). Tests should be written alongs
 
 - [x] **5.1 — Terminal width handling**: Detect terminal width via `process.stdout.columns`. Center the 44-char frame within available width. If terminal < 44 columns, render without frame (graceful degradation). Log warning if < 80 columns but still render.
 - [x] **5.2 — Input edge cases**: Handle unexpected input gracefully — non-numeric bet input (show error, re-prompt), unknown keys during play (ignore), empty ENTER during betting (re-prompt), negative numbers/zero (show error). No crashes on any input.
-- [ ] **5.3 — Re-shuffle notification**: When `state.reshuffled === true`, render a brief `"♻ Deck reshuffled"` message (dim) above the dealer area. Clear the flag after displaying: `state.reshuffled = false` in the game loop after render.
+- [x] **5.3 — Re-shuffle notification**: When `state.reshuffled === true`, render a brief `"♻ Deck reshuffled"` message (dim) above the dealer area. Clear the flag after displaying: `state.reshuffled = false` in the game loop after render. Already implemented: renderer.js:399-401 renders the notification, index.js:256 and index.js:269 clear the flag. Also fixed renderGameOverScreen call signature bug (was passing state.chips, state.stats, getWinRate instead of state, getWinRate).
 - [ ] **5.4 — Final integration test**: Run `node src/index.js` and verify full game loop works end-to-end. Syntax check all files via `node --check`. Run all tests, verify passing.
 
 ---

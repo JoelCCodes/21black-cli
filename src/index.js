@@ -128,13 +128,15 @@ function readLine(prompt = '') {
       input: process.stdin,
       output: process.stdout,
     });
+    let answered = false;
     rl.question(prompt, (answer) => {
+      answered = true;
       rl.close();
       resolve(answer.trim());
     });
     // Ctrl+C in line mode triggers 'close' without answer — treat as quit
     rl.on('close', () => {
-      resolve(null);
+      if (!answered) resolve(null);
     });
   });
 }
@@ -239,7 +241,7 @@ async function main() {
       // Check game over
       state = checkGameOver(state);
       if (state.phase === 'gameOver') {
-        renderGameOverScreen(state.chips, state.stats, getWinRate);
+        renderGameOverScreen(state, getWinRate);
         while (true) {
           const key = await waitForKey();
           if (key.toLowerCase() === 'q') cleanExit(0);
@@ -305,7 +307,7 @@ async function main() {
       await sleep(2500);
       state = checkGameOver(state);
       if (state.phase === 'gameOver') {
-        renderGameOverScreen(state.chips, state.stats, getWinRate);
+        renderGameOverScreen(state, getWinRate);
         while (true) {
           const key = await waitForKey();
           if (key.toLowerCase() === 'q') cleanExit(0);
@@ -346,7 +348,7 @@ async function main() {
     // Check game over
     state = checkGameOver(state);
     if (state.phase === 'gameOver') {
-      renderGameOverScreen(state.chips, state.stats, getWinRate);
+      renderGameOverScreen(state, getWinRate);
       while (true) {
         const key = await waitForKey();
         if (key.toLowerCase() === 'q') cleanExit(0);
