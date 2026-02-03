@@ -2,7 +2,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createDeck, shuffleDeck, createGameState, calculateHandTotal, dealInitialCards, checkForBlackjack, playerHit, playerStand } from './game.js';
+import { createDeck, shuffleDeck, createGameState, calculateHandTotal, dealInitialCards, checkForBlackjack, playerHit, playerStand, playerDouble } from './game.js';
 
 // 4.1 — Deck tests
 describe('createDeck', () => {
@@ -794,5 +794,144 @@ describe('playerStand', () => {
     state.reshuffled = true;
     const result = playerStand(state);
     assert.equal(result.reshuffled, true);
+  });
+});
+
+// playerDouble tests (item 1.9, part of 4.4)
+describe('playerDouble', () => {
+  const card = (rank, suit = '♠') => {
+    let value;
+    if (rank === 'A') value = 11;
+    else if (['J', 'Q', 'K'].includes(rank)) value = 10;
+    else value = parseInt(rank, 10);
+    return { suit, rank, value };
+  };
+
+  const makeState = (playerCards, deckCards, bet = 100) => {
+    const state = createGameState();
+    state.playerHand = playerCards;
+    state.dealerHand = [card('8'), card('9')];
+    state.deck = deckCards;
+    state.bet = bet;
+    state.chips = 900; // 1000 - 100 bet
+    state.phase = 'playing';
+    return state;
+  };
+
+  it('doubles the bet amount', () => {
+    const state = makeState([card('5'), card('6')], [card('3')], 100);
+    const result = playerDouble(state);
+    assert.equal(result.bet, 200);
+  });
+
+  it('deducts additional bet from chips', () => {
+    const state = makeState([card('5'), card('6')], [card('3')], 100);
+    state.chips = 900;
+    const result = playerDouble(state);
+    assert.equal(result.chips, 800); // 900 - 100 additional
+  });
+
+  it('draws exactly one card', () => {
+    const state = makeState([card('5'), card('6')], [card('3'), card('4')]);
+    const result = playerDouble(state);
+    assert.equal(result.playerHand.length, 3);
+    assert.equal(result.deck.length, 1);
+  });
+
+  it('draws the top card (last element) from the deck', () => {
+    const topCard = card('9', '♥');
+    const state = makeState([card('5'), card('6')], [card('2'), topCard]);
+    const result = playerDouble(state);
+    assert.equal(result.playerHand[2].rank, '9');
+    assert.equal(result.playerHand[2].suit, '♥');
+  });
+
+  it('auto-stands after drawing (phase becomes dealerTurn)', () => {
+    // 5 + 6 + 3 = 14, no bust
+    const state = makeState([card('5'), card('6')], [card('3')]);
+    const result = playerDouble(state);
+    assert.equal(result.phase, 'dealerTurn');
+    assert.equal(result.result, null);
+  });
+
+  it('busts when total > 21 after draw', () => {
+    // K(10) + 8 + 7 = 25 → bust
+    const state = makeState([card('K'), card('8')], [card('7')], 100);
+    const result = playerDouble(state);
+    assert.equal(result.phase, 'result');
+    assert.equal(result.result.outcome, 'bust');
+    assert.equal(result.result.message, 'BUST!');
+  });
+
+  it('sets chipChange to negative doubled bet on bust', () => {
+    const state = makeState([card('K'), card('8')], [card('7')], 100);
+    const result = playerDouble(state);
+    assert.equal(result.result.chipChange, -200); // doubled bet
+  });
+
+  it('updates stats on bust (handsPlayed and handsLost)', () => {
+    const state = makeState([card('K'), card('8')], [card('7')]);
+    const result = playerDouble(state);
+    assert.equal(result.stats.handsPlayed, 1);
+    assert.equal(result.stats.handsLost, 1);
+  });
+
+  it('does not set result when not busted', () => {
+    const state = makeState([card('5'), card('6')], [card('3')]);
+    const result = playerDouble(state);
+    assert.equal(result.result, null);
+  });
+
+  it('does not update stats when not busted (settlement handles it)', () => {
+    const state = makeState([card('5'), card('6')], [card('3')]);
+    const result = playerDouble(state);
+    assert.equal(result.stats.handsPlayed, 0);
+    assert.equal(result.stats.handsLost, 0);
+  });
+
+  it('handles ace demotion correctly (A + 8 + 5 = 14, not bust)', () => {
+    // A(11) + 8 = 19, draw 5 → A(1) + 8 + 5 = 14
+    const state = makeState([card('A'), card('8')], [card('5')]);
+    const result = playerDouble(state);
+    assert.equal(result.phase, 'dealerTurn');
+    assert.equal(calculateHandTotal(result.playerHand).total, 14);
+  });
+
+  it('reaches exactly 21 and goes to dealerTurn (not result)', () => {
+    // 5 + 6 + K = 21
+    const state = makeState([card('5'), card('6')], [card('K')]);
+    const result = playerDouble(state);
+    assert.equal(result.phase, 'dealerTurn');
+    assert.equal(calculateHandTotal(result.playerHand).total, 21);
+  });
+
+  it('does not mutate original state', () => {
+    const state = makeState([card('5'), card('6')], [card('3'), card('4')]);
+    const originalHandLen = state.playerHand.length;
+    const originalDeckLen = state.deck.length;
+    const originalBet = state.bet;
+    const originalChips = state.chips;
+    playerDouble(state);
+    assert.equal(state.playerHand.length, originalHandLen);
+    assert.equal(state.deck.length, originalDeckLen);
+    assert.equal(state.bet, originalBet);
+    assert.equal(state.chips, originalChips);
+    assert.equal(state.phase, 'playing');
+  });
+
+  it('preserves other state fields', () => {
+    const state = makeState([card('5'), card('6')], [card('3')]);
+    state.reshuffled = true;
+    const result = playerDouble(state);
+    assert.equal(result.reshuffled, true);
+    assert.equal(result.dealerHand.length, 2);
+  });
+
+  it('works with larger bet amounts ($500 bet doubles to $1000)', () => {
+    const state = makeState([card('5'), card('6')], [card('3')], 500);
+    state.chips = 500; // 1000 - 500
+    const result = playerDouble(state);
+    assert.equal(result.bet, 1000);
+    assert.equal(result.chips, 0); // 500 - 500
   });
 });

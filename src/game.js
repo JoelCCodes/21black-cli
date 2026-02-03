@@ -172,6 +172,41 @@ export function playerStand(state) {
   };
 }
 
+export function playerDouble(state) {
+  const deck = [...state.deck];
+  const card = deck.pop();
+  const playerHand = [...state.playerHand, card];
+  const newBet = state.bet * 2;
+  const newChips = state.chips - state.bet; // deduct additional bet equal to original
+  const { total } = calculateHandTotal(playerHand);
+
+  if (total > 21) {
+    return {
+      ...state,
+      deck,
+      playerHand,
+      bet: newBet,
+      chips: newChips,
+      phase: 'result',
+      result: { outcome: 'bust', message: 'BUST!', chipChange: -newBet },
+      stats: {
+        ...state.stats,
+        handsPlayed: state.stats.handsPlayed + 1,
+        handsLost: state.stats.handsLost + 1,
+      },
+    };
+  }
+
+  return {
+    ...state,
+    deck,
+    playerHand,
+    bet: newBet,
+    chips: newChips,
+    phase: 'dealerTurn',
+  };
+}
+
 export function dealInitialCards(state) {
   let deck = [...state.deck];
   let reshuffled = state.reshuffled;
