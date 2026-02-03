@@ -97,7 +97,7 @@ These decisions resolve conflicts and gaps between specs. Builders must follow t
 
 All rendering uses `process.stdout.write()` — no `console.log`.
 
-- [ ] **2.1 — ANSI color utilities**: Helper functions: `red(s)`, `green(s)`, `yellow(s)`, `cyan(s)`, `bold(s)`, `dim(s)`, `reset`. Raw `\x1b[` codes, no dependencies. Also `magenta(s)` for blackjack emphasis.
+- [x] **2.1 — ANSI color utilities**: Helper functions: `red(s)`, `green(s)`, `yellow(s)`, `cyan(s)`, `bold(s)`, `dim(s)`, `reset`. Raw `\x1b[` codes, no dependencies. Also `magenta(s)` for blackjack emphasis.
 - [ ] **2.2 — Number formatting utility**: `formatChips(n)` returns string like `$1,000`. Use `toLocaleString('en-US')` or manual comma insertion. Used by all screens that display chip amounts. Implement early — needed by almost every renderer item.
 - [ ] **2.3 — Card ASCII art rendering**: `renderCard(card, faceDown?)` — returns array of 5 strings (the 5 lines of a card). Face-down: ░ pattern. Handle 10 (two-digit rank alignment). Color suits: red for ♥♦, white for ♠♣. Dim borders via `dim()`.
 - [ ] **2.4 — Hand rendering (side-by-side)**: `renderHand(cards, options?)` — take array of card objects, render side-by-side by interleaving card line arrays. 1 space between cards. `options.dimmed` for inactive split hand.
