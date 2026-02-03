@@ -2,7 +2,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createDeck, shuffleDeck, createGameState, calculateHandTotal } from './game.js';
+import { createDeck, shuffleDeck, createGameState, calculateHandTotal, dealInitialCards } from './game.js';
 
 // 4.1 — Deck tests
 describe('createDeck', () => {
@@ -321,5 +321,126 @@ describe('calculateHandTotal', () => {
     const result = calculateHandTotal([card('A'), card('5'), card('A'), card('4')]);
     assert.equal(result.total, 21);
     assert.equal(result.soft, true);
+  });
+});
+
+// dealInitialCards tests (item 1.5)
+describe('dealInitialCards', () => {
+  it('deals 2 cards to player and 2 to dealer', () => {
+    const state = createGameState();
+    state.deck = shuffleDeck(createDeck());
+    const newState = dealInitialCards(state);
+    assert.equal(newState.playerHand.length, 2);
+    assert.equal(newState.dealerHand.length, 2);
+  });
+
+  it('removes 4 cards from the deck', () => {
+    const state = createGameState();
+    state.deck = shuffleDeck(createDeck());
+    const newState = dealInitialCards(state);
+    assert.equal(newState.deck.length, 48);
+  });
+
+  it('sets phase to playing', () => {
+    const state = createGameState();
+    state.deck = shuffleDeck(createDeck());
+    const newState = dealInitialCards(state);
+    assert.equal(newState.phase, 'playing');
+  });
+
+  it('does not mutate the original state', () => {
+    const state = createGameState();
+    state.deck = shuffleDeck(createDeck());
+    const originalDeckLen = state.deck.length;
+    dealInitialCards(state);
+    assert.equal(state.deck.length, originalDeckLen);
+    assert.equal(state.playerHand.length, 0);
+    assert.equal(state.dealerHand.length, 0);
+    assert.equal(state.phase, 'welcome');
+  });
+
+  it('dealt cards are valid card objects', () => {
+    const state = createGameState();
+    state.deck = shuffleDeck(createDeck());
+    const newState = dealInitialCards(state);
+    for (const card of [...newState.playerHand, ...newState.dealerHand]) {
+      assert.ok('suit' in card);
+      assert.ok('rank' in card);
+      assert.ok('value' in card);
+    }
+  });
+
+  it('dealt cards are no longer in the deck', () => {
+    const state = createGameState();
+    state.deck = shuffleDeck(createDeck());
+    const newState = dealInitialCards(state);
+    const deckKeys = new Set(newState.deck.map(c => `${c.suit}${c.rank}`));
+    for (const card of [...newState.playerHand, ...newState.dealerHand]) {
+      const key = `${card.suit}${card.rank}`;
+      assert.ok(!deckKeys.has(key), `dealt card ${key} should not be in deck`);
+    }
+  });
+
+  it('preserves other state fields', () => {
+    const state = createGameState();
+    state.deck = shuffleDeck(createDeck());
+    state.chips = 500;
+    state.bet = 100;
+    const newState = dealInitialCards(state);
+    assert.equal(newState.chips, 500);
+    assert.equal(newState.bet, 100);
+  });
+
+  // 4.10 — Deck reshuffle tests
+  it('reshuffles when deck has fewer than 15 cards', () => {
+    const state = createGameState();
+    state.deck = shuffleDeck(createDeck()).slice(0, 10); // only 10 cards
+    const newState = dealInitialCards(state);
+    assert.equal(newState.reshuffled, true);
+    // After reshuffle + dealing 4 cards, deck should be 48
+    assert.equal(newState.deck.length, 48);
+  });
+
+  it('reshuffles when deck is empty', () => {
+    const state = createGameState();
+    state.deck = [];
+    const newState = dealInitialCards(state);
+    assert.equal(newState.reshuffled, true);
+    assert.equal(newState.deck.length, 48);
+    assert.equal(newState.playerHand.length, 2);
+    assert.equal(newState.dealerHand.length, 2);
+  });
+
+  it('reshuffles when deck has exactly 14 cards', () => {
+    const state = createGameState();
+    state.deck = shuffleDeck(createDeck()).slice(0, 14);
+    const newState = dealInitialCards(state);
+    assert.equal(newState.reshuffled, true);
+    assert.equal(newState.deck.length, 48);
+  });
+
+  it('does not reshuffle when deck has exactly 15 cards', () => {
+    const state = createGameState();
+    state.deck = shuffleDeck(createDeck()).slice(0, 15);
+    const newState = dealInitialCards(state);
+    assert.equal(newState.reshuffled, false);
+    assert.equal(newState.deck.length, 11); // 15 - 4
+  });
+
+  it('does not reshuffle when deck is full', () => {
+    const state = createGameState();
+    state.deck = shuffleDeck(createDeck());
+    const newState = dealInitialCards(state);
+    assert.equal(newState.reshuffled, false);
+    assert.equal(newState.deck.length, 48);
+  });
+
+  it('reshuffled deck has 52 cards (before dealing)', () => {
+    const state = createGameState();
+    state.deck = [];
+    const newState = dealInitialCards(state);
+    // deck(48) + player(2) + dealer(2) = 52
+    const totalCards = newState.deck.length + newState.playerHand.length + newState.dealerHand.length;
+    assert.equal(totalCards, 52);
   });
 });

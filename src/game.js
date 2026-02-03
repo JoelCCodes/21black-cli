@@ -74,3 +74,25 @@ export function createDeck() {
   }
   return deck;
 }
+
+export function dealInitialCards(state) {
+  let deck = [...state.deck];
+  let reshuffled = state.reshuffled;
+
+  if (deck.length < 15) {
+    deck = shuffleDeck(createDeck());
+    reshuffled = true;
+  }
+
+  const playerHand = [deck.pop(), deck.pop()];
+  const dealerHand = [deck.pop(), deck.pop()];
+
+  return {
+    ...state,
+    deck,
+    playerHand,
+    dealerHand,
+    reshuffled,
+    phase: 'playing',
+  };
+}

@@ -72,7 +72,7 @@ These decisions resolve conflicts and gaps between specs. Builders must follow t
   }
   ```
 - [x] **1.4 — Hand evaluation**: `calculateHandTotal(cards)` returns `{ total, soft }`. Handles ace optimization: count aces as 11, demote to 1 one-at-a-time if total > 21. `soft` is true when at least one ace is counted as 11.
-- [ ] **1.5 — Dealing logic**: `dealInitialCards(state)` — deal 2 cards each to player and dealer from deck. Auto-reshuffle if deck < 15 cards (set `state.reshuffled = true` when this happens). Returns new state with phase set to `'playing'`.
+- [x] **1.5 — Dealing logic**: `dealInitialCards(state)` — deal 2 cards each to player and dealer from deck. Auto-reshuffle if deck < 15 cards (set `state.reshuffled = true` when this happens). Returns new state with phase set to `'playing'`.
 - [ ] **1.6 — Blackjack detection**: `checkForBlackjack(state)` — check if player and/or dealer have natural 21 after initial deal. Mutual blackjack = push. Player blackjack = 3:2 payout. Dealer blackjack = player loses. Set phase to `'result'` and populate `state.result` if either has blackjack.
 - [ ] **1.7 — Player actions — Hit**: `playerHit(state)` — draw card, add to player hand, check bust (total > 21 → phase = `'result'`). Also auto-stand if total === 21 (set phase to `'dealerTurn'`). Return new state.
 - [ ] **1.8 — Player actions — Stand**: `playerStand(state)` — set phase to `'dealerTurn'`. Return new state.
