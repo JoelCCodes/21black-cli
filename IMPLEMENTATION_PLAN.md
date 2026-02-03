@@ -47,7 +47,7 @@ These decisions resolve conflicts and gaps between specs. Builders must follow t
 ### Phase 1: Core Game Engine (`src/game.js`)
 
 - [x] **1.1 — Deck creation**: Function `createDeck()` returns a standard 52-card array. Card objects: `{ suit, rank, value }`. Suits: ♠ ♥ ♦ ♣. Ranks: 2-10, J, Q, K, A. Values: 2-10 face, J/Q/K=10, A=11.
-- [ ] **1.2 — Fisher-Yates shuffle**: `shuffleDeck(deck)` using `Math.random()`. Returns new shuffled array (no mutation).
+- [x] **1.2 — Fisher-Yates shuffle**: `shuffleDeck(deck)` using `Math.random()`. Returns new shuffled array (no mutation).
 - [ ] **1.3 — Game state initialization**: `createGameState()` returns initial state object:
   ```
   {
@@ -134,7 +134,7 @@ All timing/pauses live here. `game.js` is never imported with I/O side effects.
 Use Node.js built-in test runner (`node --test`). Tests should be written alongside Phase 1 items — they don't need to wait until all game logic is done.
 
 - [x] **4.1 — Deck tests**: Verify 52 cards, correct suits/ranks/values, no duplicates. Verify card object shape `{ suit, rank, value }`.
-- [ ] **4.2 — Shuffle tests**: Verify shuffle produces different order (statistical — run multiple times), maintains all 52 cards, does not mutate original.
+- [x] **4.2 — Shuffle tests**: Verify shuffle produces different order (statistical — run multiple times), maintains all 52 cards, does not mutate original.
 - [ ] **4.3 — Hand evaluation tests**: Test basic totals (e.g., 7+5=12), soft hands (A+6=soft 17), ace demotion (A+6+8=15 not 25), multiple aces (A+A=12 soft), blackjack detection (A+K=21 with 2 cards).
 - [ ] **4.4 — Player action tests**: Hit draws card + busts correctly. Stand advances phase. Double: doubles bet, draws exactly 1 card, auto-stands. Double rejected when chips insufficient. Double rejected after first hit.
 - [ ] **4.5 — Dealer logic tests**: Dealer hits below 17, stands on 17, stands on soft 17 (A+6=17 stands, not hits).

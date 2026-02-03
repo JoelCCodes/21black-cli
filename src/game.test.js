@@ -2,7 +2,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createDeck } from './game.js';
+import { createDeck, shuffleDeck } from './game.js';
 
 // 4.1 — Deck tests
 describe('createDeck', () => {
@@ -81,5 +81,57 @@ describe('createDeck', () => {
       const count = deck.filter(c => c.rank === rank).length;
       assert.equal(count, 4);
     }
+  });
+});
+
+// 4.2 — Shuffle tests
+describe('shuffleDeck', () => {
+  it('returns an array of 52 cards', () => {
+    const deck = createDeck();
+    const shuffled = shuffleDeck(deck);
+    assert.equal(shuffled.length, 52);
+  });
+
+  it('does not mutate the original deck', () => {
+    const deck = createDeck();
+    const original = deck.map(c => `${c.suit}${c.rank}`);
+    shuffleDeck(deck);
+    const after = deck.map(c => `${c.suit}${c.rank}`);
+    assert.deepEqual(original, after);
+  });
+
+  it('preserves all 52 cards (no cards lost or duplicated)', () => {
+    const deck = createDeck();
+    const shuffled = shuffleDeck(deck);
+    const originalKeys = deck.map(c => `${c.suit}${c.rank}`).sort();
+    const shuffledKeys = shuffled.map(c => `${c.suit}${c.rank}`).sort();
+    assert.deepEqual(originalKeys, shuffledKeys);
+  });
+
+  it('produces a different order from the original', () => {
+    const deck = createDeck();
+    // Run 5 shuffles — at least one must differ from original order.
+    // Probability of all 5 matching original is astronomically small.
+    let allSame = true;
+    for (let i = 0; i < 5; i++) {
+      const shuffled = shuffleDeck(deck);
+      const originalKeys = deck.map(c => `${c.suit}${c.rank}`).join(',');
+      const shuffledKeys = shuffled.map(c => `${c.suit}${c.rank}`).join(',');
+      if (originalKeys !== shuffledKeys) {
+        allSame = false;
+        break;
+      }
+    }
+    assert.equal(allSame, false, 'shuffle should produce a different order');
+  });
+
+  it('produces different results on successive calls', () => {
+    const deck = createDeck();
+    const results = new Set();
+    for (let i = 0; i < 10; i++) {
+      const shuffled = shuffleDeck(deck);
+      results.add(shuffled.map(c => `${c.suit}${c.rank}`).join(','));
+    }
+    assert.ok(results.size > 1, 'multiple shuffles should produce different orderings');
   });
 });
