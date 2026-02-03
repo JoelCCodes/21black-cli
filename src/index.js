@@ -176,6 +176,8 @@ async function main() {
   // ── Main game loop (items 3.3–3.10) ────────────────────────────────
   // Outer loop: one iteration per hand. Exits on quit or game over quit.
 
+  let lastBet = 0;
+
   while (true) {
     // Transition to betting phase
     state = { ...state, phase: 'betting', result: null, playerHand: [], dealerHand: [], splitHands: undefined, activeHandIndex: 0 };
@@ -183,7 +185,7 @@ async function main() {
     // ── 3.3 Betting Input Loop ─────────────────────────────────────────
     let betError = null;
     while (true) {
-      renderBettingScreen(state.chips, betError);
+      renderBettingScreen(state.chips, betError, lastBet);
       process.stdout.write(SHOW_CURSOR);
       const input = await readLine('  > ');
       process.stdout.write(HIDE_CURSOR);
@@ -194,10 +196,22 @@ async function main() {
       // Quit
       if (input.toLowerCase() === 'q') cleanExit(0);
 
-      // Empty input — re-prompt
+      // Empty input — repeat last bet (clamped to available chips)
       if (input === '') {
-        betError = 'Enter a bet amount.';
-        continue;
+        if (lastBet <= 0) {
+          betError = 'Enter a bet amount.';
+          continue;
+        }
+        const repeatAmount = Math.min(lastBet, state.chips);
+        const betResult = placeBet(state, repeatAmount);
+        if (!betResult.valid) {
+          betError = betResult.error;
+          continue;
+        }
+        state = betResult.state;
+        lastBet = repeatAmount;
+        betError = null;
+        break;
       }
 
       // Parse numeric bet — reject hex (0x), octal (0o), binary (0b), and other non-decimal formats
@@ -217,8 +231,9 @@ async function main() {
         continue;
       }
 
-      // Valid bet — advance state
+      // Valid bet — advance state and remember for next hand
       state = betResult.state;
+      lastBet = amount;
       betError = null;
       break;
     }

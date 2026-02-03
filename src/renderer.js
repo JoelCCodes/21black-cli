@@ -464,11 +464,14 @@ const renderWelcomeScreen = () => {
  * @param {number} chips - current chip count
  * @param {string} [error] - optional error message to display (e.g., invalid bet)
  */
-const renderBettingScreen = (chips, error) => {
+const renderBettingScreen = (chips, error, lastBet = 0) => {
   const margin = frameMargin();
   const title = `♠ ${bold('BLACKJACK 21')} ♠`;
   const chipsLine = `Chips: ${yellow(formatChips(chips))}`;
-  const promptLine = 'Place your bet ($10-$500):';
+  const repeatAmount = lastBet > 0 ? Math.min(lastBet, chips) : 0;
+  const promptLine = repeatAmount > 0
+    ? `Place your bet or ENTER to repeat ${yellow(formatChips(repeatAmount))}:`
+    : 'Place your bet ($10-$500):';
   const quitLine = dim('[Q]uit');
 
   const lines = [
