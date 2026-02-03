@@ -13,4 +13,18 @@ const magenta = (s) => `\x1b[95m${s}${RESET}`;
 const bold = (s) => `\x1b[1m${s}${RESET}`;
 const dim = (s) => `\x1b[2m${s}${RESET}`;
 
-export { RESET, red, green, yellow, cyan, magenta, bold, dim };
+// ─── Number Formatting (Item 2.2) ───────────────────────────────────
+
+/**
+ * Format a chip amount as a dollar string with commas.
+ * formatChips(1000) → "$1,000"
+ * formatChips(-50) → "-$50"
+ * formatChips(0) → "$0"
+ */
+const formatChips = (n) => {
+  const abs = Math.abs(n);
+  const formatted = abs.toLocaleString('en-US');
+  return n < 0 ? `-$${formatted}` : `$${formatted}`;
+};
+
+export { RESET, red, green, yellow, cyan, magenta, bold, dim, formatChips };
