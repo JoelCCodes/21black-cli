@@ -2,7 +2,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createDeck, shuffleDeck, createGameState, calculateHandTotal, dealInitialCards, checkForBlackjack } from './game.js';
+import { createDeck, shuffleDeck, createGameState, calculateHandTotal, dealInitialCards, checkForBlackjack, playerHit } from './game.js';
 
 // 4.1 — Deck tests
 describe('createDeck', () => {
@@ -587,5 +587,127 @@ describe('checkForBlackjack', () => {
     const result = checkForBlackjack(state);
     assert.equal(result.reshuffled, true);
     assert.ok(result.deck.length > 0);
+  });
+});
+
+// playerHit tests (item 1.7, part of 4.4)
+describe('playerHit', () => {
+  const card = (rank, suit = '♠') => {
+    let value;
+    if (rank === 'A') value = 11;
+    else if (['J', 'Q', 'K'].includes(rank)) value = 10;
+    else value = parseInt(rank, 10);
+    return { suit, rank, value };
+  };
+
+  const makeState = (playerCards, deckCards, bet = 100) => {
+    const state = createGameState();
+    state.playerHand = playerCards;
+    state.dealerHand = [card('8'), card('9')];
+    state.deck = deckCards;
+    state.bet = bet;
+    state.chips = 900;
+    state.phase = 'playing';
+    return state;
+  };
+
+  it('draws one card from the deck and adds to player hand', () => {
+    const state = makeState([card('7'), card('5')], [card('3'), card('4'), card('2')]);
+    const result = playerHit(state);
+    assert.equal(result.playerHand.length, 3);
+    assert.equal(result.deck.length, 2);
+  });
+
+  it('draws the top card (last element) from the deck', () => {
+    const topCard = card('K');
+    const state = makeState([card('7'), card('5')], [card('3'), topCard]);
+    const result = playerHit(state);
+    assert.equal(result.playerHand[2].rank, 'K');
+    assert.equal(result.playerHand[2].suit, '♠');
+  });
+
+  it('keeps phase as playing when total < 21', () => {
+    const state = makeState([card('7'), card('5')], [card('3')]);
+    const result = playerHit(state);
+    assert.equal(result.phase, 'playing');
+    assert.equal(result.result, null);
+  });
+
+  it('busts when total > 21 (sets phase to result)', () => {
+    // 10 + 8 + 7 = 25 → bust
+    const state = makeState([card('10'), card('8')], [card('7')]);
+    const result = playerHit(state);
+    assert.equal(result.phase, 'result');
+    assert.equal(result.result.outcome, 'bust');
+    assert.equal(result.result.message, 'BUST!');
+  });
+
+  it('sets chipChange to negative bet on bust', () => {
+    const state = makeState([card('K'), card('8')], [card('7')], 200);
+    state.chips = 800;
+    const result = playerHit(state);
+    assert.equal(result.result.chipChange, -200);
+  });
+
+  it('updates stats on bust (handsPlayed and handsLost)', () => {
+    const state = makeState([card('K'), card('8')], [card('7')]);
+    const result = playerHit(state);
+    assert.equal(result.stats.handsPlayed, 1);
+    assert.equal(result.stats.handsLost, 1);
+  });
+
+  it('auto-stands at exactly 21 (sets phase to dealerTurn)', () => {
+    // 10 + 5 + 6 = 21 → auto-stand
+    const state = makeState([card('10'), card('5')], [card('6')]);
+    const result = playerHit(state);
+    assert.equal(result.phase, 'dealerTurn');
+    assert.equal(result.result, null);
+  });
+
+  it('auto-stands at 21 with ace soft hand (A + 3 + 7 = 21)', () => {
+    // A(11) + 3 + 7 = 21
+    const state = makeState([card('A'), card('3')], [card('7')]);
+    const result = playerHit(state);
+    assert.equal(result.phase, 'dealerTurn');
+    assert.equal(calculateHandTotal(result.playerHand).total, 21);
+  });
+
+  it('does not mutate original state', () => {
+    const state = makeState([card('7'), card('5')], [card('3'), card('4')]);
+    const originalHandLen = state.playerHand.length;
+    const originalDeckLen = state.deck.length;
+    playerHit(state);
+    assert.equal(state.playerHand.length, originalHandLen);
+    assert.equal(state.deck.length, originalDeckLen);
+    assert.equal(state.phase, 'playing');
+  });
+
+  it('preserves other state fields', () => {
+    const state = makeState([card('7'), card('5')], [card('3')]);
+    state.reshuffled = true;
+    const result = playerHit(state);
+    assert.equal(result.reshuffled, true);
+    assert.equal(result.chips, 900);
+    assert.equal(result.bet, 100);
+    assert.equal(result.dealerHand.length, 2);
+  });
+
+  it('handles ace demotion correctly when hitting (A + 8 + 5 = 14 not bust)', () => {
+    // A(11) + 8 = 19, then hit 5 → A(1) + 8 + 5 = 14
+    const state = makeState([card('A'), card('8')], [card('5')]);
+    const result = playerHit(state);
+    assert.equal(result.phase, 'playing');
+    const { total } = calculateHandTotal(result.playerHand);
+    assert.equal(total, 14);
+  });
+
+  it('bust with ace already demoted (A + 9 + 5 + K = 25)', () => {
+    // A(11)+9=20 → hit 5 → A(1)+9+5=15 → hit K → 25 bust
+    // We need to do two hits, so set up after first hit
+    const state = makeState([card('A'), card('9'), card('5')], [card('K')]);
+    const result = playerHit(state);
+    assert.equal(result.phase, 'result');
+    assert.equal(result.result.outcome, 'bust');
+    assert.equal(calculateHandTotal(result.playerHand).total, 25);
   });
 });

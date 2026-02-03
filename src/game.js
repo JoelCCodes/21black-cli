@@ -126,6 +126,45 @@ export function checkForBlackjack(state) {
   };
 }
 
+export function playerHit(state) {
+  const deck = [...state.deck];
+  const card = deck.pop();
+  const playerHand = [...state.playerHand, card];
+  const { total } = calculateHandTotal(playerHand);
+
+  if (total > 21) {
+    // Bust
+    return {
+      ...state,
+      deck,
+      playerHand,
+      phase: 'result',
+      result: { outcome: 'bust', message: 'BUST!', chipChange: -state.bet },
+      stats: {
+        ...state.stats,
+        handsPlayed: state.stats.handsPlayed + 1,
+        handsLost: state.stats.handsLost + 1,
+      },
+    };
+  }
+
+  if (total === 21) {
+    // Auto-stand at 21
+    return {
+      ...state,
+      deck,
+      playerHand,
+      phase: 'dealerTurn',
+    };
+  }
+
+  return {
+    ...state,
+    deck,
+    playerHand,
+  };
+}
+
 export function dealInitialCards(state) {
   let deck = [...state.deck];
   let reshuffled = state.reshuffled;
