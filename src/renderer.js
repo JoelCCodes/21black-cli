@@ -170,9 +170,24 @@ const renderHand = (cards, options = {}) => {
   return lines;
 };
 
+// ─── Header Bar (Item 2.6) ──────────────────────────────────────────
+
+/**
+ * Render the title header bar: ♠ BLACKJACK 21 ♠ centered within the frame.
+ * Returns an array of frame lines: top border, title row, divider.
+ */
+const renderHeader = () => {
+  const title = `♠ ${bold('BLACKJACK 21')} ♠`;
+  return [
+    frameTop(),
+    frameCenter(title),
+    frameDivider(),
+  ];
+};
+
 export {
   RESET, red, green, yellow, cyan, magenta, bold, dim, formatChips,
   stripAnsi, FRAME_INNER, FRAME_OUTER,
   frameLine, frameCenter, frameTop, frameBottom, frameDivider, frameEmpty, frameMargin,
-  renderCard, renderHand,
+  renderCard, renderHand, renderHeader,
 };
