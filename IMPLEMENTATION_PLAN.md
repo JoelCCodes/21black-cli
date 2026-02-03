@@ -105,7 +105,7 @@ All rendering uses `process.stdout.write()` — no `console.log`.
 - [x] **2.6 — Header bar**: Render `♠ BLACKJACK 21 ♠` title centered in frame header row.
 - [x] **2.7 — Chip/bet status bar**: Render `Chips: $X,XXX` (yellow) and `Bet: $XXX` (white) in sub-header. Use `formatChips()`.
 - [x] **2.8 — Dealer area**: Render dealer's cards with label. During player turn: `"DEALER (showing X)"` where X = face-up card value only. After dealer plays: `"DEALER (X)"` with actual total. If soft hand, show soft indicator.
-- [ ] **2.9 — Player area**: Render player's cards with label `"YOUR HAND (X)"`. Show `"Soft X"` when hand is soft (an ace counting as 11). Show `"BLACKJACK!"` in bold cyan/magenta when natural 21.
+- [x] **2.9 — Player area**: Render player's cards with label `"YOUR HAND (X)"`. Show `"Soft X"` when hand is soft (an ace counting as 11). Show `"BLACKJACK!"` in bold cyan/magenta when natural 21.
 - [ ] **2.10 — Action prompt bar**: Render available actions dynamically using `getAvailableActions(state)`. Show: `[H]it [S]tand [D]ouble [P]plit [Q]uit`. Dim unavailable actions. `[P]plit` only visible when split is available. `[D]ouble` dimmed after first hit or during split. During split, show `"Hand N: [H]it [S]tand"` per `specs/split-hand-ui.md`.
 - [ ] **2.11 — Full screen render function**: `renderGameScreen(state)` — clear screen (`\x1b[2J\x1b[H`), compose all sections, write to `process.stdout.write()`. Single full redraw. Show reshuffle notification if `state.reshuffled === true`.
 - [ ] **2.12 — Welcome screen**: Render per UI spec: `♠ ♥ BLACKJACK 21 ♣ ♦` centered, `"Press ENTER to play"` below, all within box frame.

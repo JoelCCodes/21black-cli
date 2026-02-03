@@ -262,9 +262,52 @@ const renderDealerArea = (state, calculateHandTotal) => {
   return lines;
 };
 
+// ─── Player Area (Item 2.9) ─────────────────────────────────────────
+
+/**
+ * Render the player area: label + cards within frame lines.
+ *
+ * Label formats:
+ *   - "YOUR HAND (X)" for hard totals
+ *   - "YOUR HAND (Soft X)" when hand is soft (ace counting as 11)
+ *   - "BLACKJACK!" in bold magenta for natural 21 (2-card 21)
+ *
+ * @param {object} state - game state with playerHand
+ * @param {function} calculateHandTotal - from game.js
+ * @returns {string[]} array of frame lines
+ */
+const renderPlayerArea = (state, calculateHandTotal) => {
+  const { playerHand } = state;
+  const lines = [];
+
+  // Build label
+  const { total, soft } = calculateHandTotal(playerHand);
+  let label;
+  if (playerHand.length === 2 && total === 21) {
+    label = bold(magenta('BLACKJACK!'));
+  } else if (soft) {
+    label = `YOUR HAND (Soft ${total})`;
+  } else {
+    label = `YOUR HAND (${total})`;
+  }
+
+  lines.push(frameEmpty());
+  lines.push(frameLine(label));
+
+  // Render cards
+  if (playerHand.length > 0) {
+    const cardLines = renderHand(playerHand);
+    for (const cl of cardLines) {
+      lines.push(frameLine(cl));
+    }
+  }
+
+  return lines;
+};
+
 export {
   RESET, red, green, yellow, cyan, magenta, bold, dim, formatChips,
   stripAnsi, FRAME_INNER, FRAME_OUTER,
   frameLine, frameCenter, frameTop, frameBottom, frameDivider, frameEmpty, frameMargin,
-  renderCard, renderHand, renderHeader, renderStatusBar, renderDealerArea,
+  renderCard, renderHand, renderHeader, renderStatusBar, renderDealerArea, renderPlayerArea,
 };
