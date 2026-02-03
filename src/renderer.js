@@ -27,6 +27,83 @@ const formatChips = (n) => {
   return n < 0 ? `-$${formatted}` : `$${formatted}`;
 };
 
+// ─── Screen Frame (Item 2.5) ───────────────────────────────────────
+
+const FRAME_INNER = 42;  // inner content width between ║ characters
+const FRAME_OUTER = 44;  // total frame width: ║ + 42 + ║
+
+/**
+ * Strip ANSI escape codes from a string to get its visual/printed width.
+ */
+const stripAnsi = (s) => s.replace(/\x1b\[[0-9;]*m/g, '');
+
+/**
+ * Pad/truncate content to fit within ║...║ frame line.
+ * Content is left-aligned with 1 space padding on each side.
+ * frameLine("Hello") → "║ Hello                                    ║"
+ */
+const frameLine = (content = '') => {
+  const visual = stripAnsi(content);
+  const available = FRAME_INNER - 2; // 2 spaces for left+right padding
+  const visLen = visual.length;
+  if (visLen > available) {
+    // Truncate: walk the original string counting visible chars
+    let count = 0;
+    let i = 0;
+    while (i < content.length && count < available) {
+      if (content[i] === '\x1b') {
+        const end = content.indexOf('m', i);
+        if (end !== -1) { i = end + 1; continue; }
+      }
+      count++;
+      i++;
+    }
+    // Include any trailing ANSI reset
+    const remaining = content.slice(i);
+    const resetMatch = remaining.match(/^(\x1b\[[0-9;]*m)*/);
+    const trailingReset = resetMatch ? resetMatch[0] : '';
+    return dim('║') + ' ' + content.slice(0, i) + trailingReset + ' ' + dim('║');
+  }
+  const pad = available - visLen;
+  return dim('║') + ' ' + content + ' '.repeat(pad) + ' ' + dim('║');
+};
+
+/**
+ * Center a line of text within the frame (FRAME_INNER - 2 usable chars).
+ * frameCenter("HELLO") → "║              HELLO                       ║"
+ */
+const frameCenter = (content = '') => {
+  const visual = stripAnsi(content);
+  const available = FRAME_INNER - 2;
+  const visLen = visual.length;
+  if (visLen >= available) return frameLine(content);
+  const leftPad = Math.floor((available - visLen) / 2);
+  const rightPad = available - visLen - leftPad;
+  return dim('║') + ' ' + ' '.repeat(leftPad) + content + ' '.repeat(rightPad) + ' ' + dim('║');
+};
+
+/** Top border: ╔══════...══════╗ */
+const frameTop = () => dim('╔' + '═'.repeat(FRAME_INNER) + '╗');
+
+/** Bottom border: ╚══════...══════╝ */
+const frameBottom = () => dim('╚' + '═'.repeat(FRAME_INNER) + '╝');
+
+/** Horizontal divider: ╠══════...══════╣ */
+const frameDivider = () => dim('╠' + '═'.repeat(FRAME_INNER) + '╣');
+
+/** Empty line within frame: ║                                          ║ */
+const frameEmpty = () => dim('║') + ' '.repeat(FRAME_INNER) + dim('║');
+
+/**
+ * Center the entire frame within the terminal width.
+ * Returns a padding string to prepend to each frame line.
+ */
+const frameMargin = () => {
+  const cols = process.stdout.columns || 80;
+  const margin = Math.max(0, Math.floor((cols - FRAME_OUTER) / 2));
+  return ' '.repeat(margin);
+};
+
 // ─── Card ASCII Art Rendering (Item 2.3) ─────────────────────────────
 
 const isRedSuit = (suit) => suit === '♥' || suit === '♦';
@@ -95,5 +172,7 @@ const renderHand = (cards, options = {}) => {
 
 export {
   RESET, red, green, yellow, cyan, magenta, bold, dim, formatChips,
+  stripAnsi, FRAME_INNER, FRAME_OUTER,
+  frameLine, frameCenter, frameTop, frameBottom, frameDivider, frameEmpty, frameMargin,
   renderCard, renderHand,
 };
