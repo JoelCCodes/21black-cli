@@ -431,6 +431,46 @@ const renderWelcomeScreen = () => {
   process.stdout.write(output);
 };
 
+// ─── Betting Prompt Screen (Item 2.13) ────────────────────────────────
+
+/**
+ * Render the betting screen: chip count, bet input prompt, quit option.
+ * Clears terminal and redraws. Writes directly to process.stdout.
+ *
+ * @param {number} chips - current chip count
+ * @param {string} [error] - optional error message to display (e.g., invalid bet)
+ */
+const renderBettingScreen = (chips, error) => {
+  const margin = frameMargin();
+  const title = `♠ ${bold('BLACKJACK 21')} ♠`;
+  const chipsLine = `Chips: ${yellow(formatChips(chips))}`;
+  const promptLine = 'Place your bet ($10-$500):';
+  const quitLine = dim('[Q]uit');
+
+  const lines = [
+    frameTop(),
+    frameCenter(title),
+    frameDivider(),
+    frameEmpty(),
+    frameCenter(chipsLine),
+    frameEmpty(),
+    frameCenter(promptLine),
+    frameEmpty(),
+  ];
+
+  if (error) {
+    lines.push(frameCenter(red(error)));
+    lines.push(frameEmpty());
+  }
+
+  lines.push(frameCenter(quitLine));
+  lines.push(frameEmpty());
+  lines.push(frameBottom());
+
+  const output = '\x1b[2J\x1b[H' + lines.map((l) => margin + l).join('\n') + '\n';
+  process.stdout.write(output);
+};
+
 // ─── Split Player Area (helper for 2.11, full render in 2.16) ────────
 
 /**
@@ -503,5 +543,5 @@ export {
   frameLine, frameCenter, frameTop, frameBottom, frameDivider, frameEmpty, frameMargin,
   renderCard, renderHand, renderHeader, renderStatusBar, renderDealerArea, renderPlayerArea,
   renderActionPrompt, renderGameScreen, renderSplitPlayerArea,
-  renderWelcomeScreen,
+  renderWelcomeScreen, renderBettingScreen,
 };
