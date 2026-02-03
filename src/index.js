@@ -242,7 +242,102 @@ async function main() {
     // No blackjack — clear reshuffled flag after it's been rendered
     state = { ...state, reshuffled: false };
 
-    // TODO: Items 3.5–3.10 will continue the game loop here.
+    // ── 3.5 Player Action Loop ─────────────────────────────────────────
+    while (state.phase === 'playing') {
+      renderGameScreen(state, calculateHandTotal, getAvailableActions);
+      const key = await waitForKey();
+      const k = key.toLowerCase();
+      const actions = getAvailableActions(state);
+
+      if (k === '\x03') cleanExit(0); // Ctrl+C
+      if (k === 'q' && actions.quit) cleanExit(0);
+
+      // Normal (non-split) actions
+      if (k === 'h' && actions.hit) {
+        state = playerHit(state);
+      } else if (k === 's' && actions.stand) {
+        state = playerStand(state);
+      } else if (k === 'd' && actions.double) {
+        state = playerDouble(state);
+      } else if (k === 'p' && actions.split) {
+        state = playerSplit(state);
+      }
+      // Split-mode actions (item 3.10)
+      else if (k === 'h' && actions.splitHit) {
+        state = splitHit(state);
+      } else if (k === 's' && actions.splitStand) {
+        state = splitStand(state);
+      }
+      // else: ignore unrecognized / unavailable keys
+    }
+
+    // Re-render after player phase ends (bust, auto-stand at 21, etc.)
+    renderGameScreen(state, calculateHandTotal, getAvailableActions);
+
+    // If player busted, phase is already 'result' — show result and continue
+    if (state.phase === 'result') {
+      await sleep(2500);
+      state = checkGameOver(state);
+      if (state.phase === 'gameOver') {
+        renderGameOverScreen(state.chips, state.stats, getWinRate);
+        while (true) {
+          const key = await waitForKey();
+          if (key.toLowerCase() === 'q') cleanExit(0);
+          if (key === '\r' || key === '\n') {
+            state = { ...state, chips: 1000, phase: 'betting' };
+            break;
+          }
+        }
+        continue;
+      }
+      // Not game over — prompt for next hand
+      while (true) {
+        const key = await waitForKey();
+        if (key.toLowerCase() === 'q') cleanExit(0);
+        if (key === '\r' || key === '\n') break;
+      }
+      continue;
+    }
+
+    // ── 3.6 Dealer Turn with Dramatic Pauses ───────────────────────────
+    // Reveal hole card first (dealer's full hand visible)
+    state = { ...state, phase: 'dealerTurn' };
+    renderGameScreen(state, calculateHandTotal, getAvailableActions);
+    await sleep(300);
+
+    // Dealer draws until done
+    while (!isDealerDone(state)) {
+      state = dealerDrawOne(state);
+      renderGameScreen(state, calculateHandTotal, getAvailableActions);
+      await sleep(350);
+    }
+
+    // ── 3.7 Result Display & Pause ─────────────────────────────────────
+    state = settleRound(state);
+    renderGameScreen(state, calculateHandTotal, getAvailableActions);
+    await sleep(2500);
+
+    // Check game over
+    state = checkGameOver(state);
+    if (state.phase === 'gameOver') {
+      renderGameOverScreen(state.chips, state.stats, getWinRate);
+      while (true) {
+        const key = await waitForKey();
+        if (key.toLowerCase() === 'q') cleanExit(0);
+        if (key === '\r' || key === '\n') {
+          state = { ...state, chips: 1000, phase: 'betting' };
+          break;
+        }
+      }
+      continue;
+    }
+
+    // Not game over — prompt: press ENTER for next hand or Q to quit
+    while (true) {
+      const key = await waitForKey();
+      if (key.toLowerCase() === 'q') cleanExit(0);
+      if (key === '\r' || key === '\n') break;
+    }
   }
 }
 

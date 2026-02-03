@@ -123,12 +123,12 @@ All timing/pauses live here. `game.js` is never imported with I/O side effects.
 - [x] **3.2 — Welcome flow**: Show welcome screen, wait for ENTER, transition to betting phase.
 - [x] **3.3 — Betting input loop**: Show betting screen, read input (numeric or 'Q'). Validate via `placeBet()`. On invalid: show error message, re-prompt. On 'Q': clean exit. On valid: deal cards.
 - [x] **3.4 — Deal & blackjack check**: Call `dealInitialCards()`, render, check blackjack via `checkForBlackjack()`. If blackjack (player or dealer), show result with pause, then advance to next hand or game over.
-- [ ] **3.5 — Player action loop**: Read single keypress (H/S/D/P/Q). Check `getAvailableActions()` — reject unavailable actions (beep or ignore). Dispatch to game functions. Re-render after each action. Loop until phase changes from `'playing'`.
-- [ ] **3.6 — Dealer turn with dramatic pauses**: Reveal hole card first (re-render with both dealer cards visible — this is its own visual beat with a 300ms pause). Then loop: call `dealerDrawOne()`, re-render, pause 300-400ms, repeat until `isDealerDone()`. Each card draw is a separate render for dramatic effect.
-- [ ] **3.7 — Result display & pause**: Show result via `settleRound()` + render. Pause 2-3 seconds. Then check game over. If not game over, prompt: `"Press ENTER for next hand or Q to quit"`.
-- [ ] **3.8 — Game over flow**: Show game over screen with stats. Wait for ENTER (play again — reset chips to $1000, keep stats) or Q (quit). On play again, return to betting phase.
-- [ ] **3.9 — Quit handling**: Clean exit on Q at any prompt point (betting, playing, result, game over). Restore terminal state: disable raw mode, show cursor, clear screen or leave final state visible.
-- [ ] **3.10 — Split hand input routing**: During split play, show active hand indicator. Route H/S to `splitHit()`/`splitStand()` on active hand. Re-render between each action. When hand 1 completes, auto-advance to hand 2 (brief pause). When all hands done, proceed to dealer turn.
+- [x] **3.5 — Player action loop**: Read single keypress (H/S/D/P/Q). Check `getAvailableActions()` — reject unavailable actions (beep or ignore). Dispatch to game functions. Re-render after each action. Loop until phase changes from `'playing'`.
+- [x] **3.6 — Dealer turn with dramatic pauses**: Reveal hole card first (re-render with both dealer cards visible — this is its own visual beat with a 300ms pause). Then loop: call `dealerDrawOne()`, re-render, pause 300-400ms, repeat until `isDealerDone()`. Each card draw is a separate render for dramatic effect.
+- [x] **3.7 — Result display & pause**: Show result via `settleRound()` + render. Pause 2-3 seconds. Then check game over. If not game over, prompt: `"Press ENTER for next hand or Q to quit"`.
+- [x] **3.8 — Game over flow**: Show game over screen with stats. Wait for ENTER (play again — reset chips to $1000, keep stats) or Q (quit). On play again, return to betting phase.
+- [x] **3.9 — Quit handling**: Clean exit on Q at any prompt point (betting, playing, result, game over). Restore terminal state: disable raw mode, show cursor, clear screen or leave final state visible.
+- [x] **3.10 — Split hand input routing**: During split play, show active hand indicator. Route H/S to `splitHit()`/`splitStand()` on active hand. Re-render between each action. When hand 1 completes, auto-advance to hand 2 (brief pause). When all hands done, proceed to dealer turn.
 
 ### Phase 4: Tests (`src/game.test.js`)
 
