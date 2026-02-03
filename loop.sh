@@ -2,12 +2,14 @@
 # Ralph Loop - CLI Blackjack Game
 # Usage: ./loop.sh [plan] [max_iterations]
 # Examples:
-#   ./loop.sh              # Build mode, unlimited iterations
-#   ./loop.sh 20           # Build mode, max 20 iterations
-#   ./loop.sh plan         # Plan mode, unlimited iterations
-#   ./loop.sh plan 5       # Plan mode, max 5 iterations
+#   ./loop.sh              # Build mode, runs until .ralph-complete exists
+#   ./loop.sh 30           # Build mode, max 30 iterations (or .ralph-complete)
+#   ./loop.sh plan         # Plan mode, runs until .ralph-complete exists
+#   ./loop.sh plan 5       # Plan mode, max 5 iterations (or .ralph-complete)
 
 set -euo pipefail
+
+DONE_FILE=".ralph-complete"
 
 # Parse arguments
 if [ "${1:-}" = "plan" ]; then
@@ -27,12 +29,16 @@ fi
 ITERATION=0
 CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "main")
 
+# Clean up done file from previous runs
+rm -f "$DONE_FILE"
+
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  ♠ ♥ ♣ ♦  RALPH LOOP - BLACKJACK  ♦ ♣ ♥ ♠"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Mode:   $MODE"
 echo "Prompt: $PROMPT_FILE"
 echo "Branch: $CURRENT_BRANCH"
+echo "Stop:   creates $DONE_FILE when complete"
 [ $MAX_ITERATIONS -gt 0 ] && echo "Max:    $MAX_ITERATIONS iterations"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
@@ -42,7 +48,7 @@ if [ ! -f "$PROMPT_FILE" ]; then
     exit 1
 fi
 
-while true; do
+while [ ! -f "$DONE_FILE" ]; do
     if [ $MAX_ITERATIONS -gt 0 ] && [ $ITERATION -ge $MAX_ITERATIONS ]; then
         echo "Reached max iterations: $MAX_ITERATIONS"
         break
@@ -64,3 +70,10 @@ while true; do
         }
     fi
 done
+
+if [ -f "$DONE_FILE" ]; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "  ♠ RALPH COMPLETE after $ITERATION iterations ♠"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+fi

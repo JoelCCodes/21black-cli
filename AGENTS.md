@@ -3,8 +3,12 @@
 ## Build & Run
 
 ```bash
-# Run the game
+# Run the game directly
 node src/index.js
+
+# Or install as CLI command and run
+npm link
+21black
 
 # Run tests
 node --test src/**/*.test.js

@@ -33,6 +33,17 @@ const FRAME_INNER = 42;  // inner content width between ║ characters
 const FRAME_OUTER = 44;  // total frame width: ║ + 42 + ║
 
 /**
+ * Get current terminal width. Returns process.stdout.columns or 80 as fallback.
+ */
+const getTerminalWidth = () => process.stdout.columns || 80;
+
+/**
+ * True when terminal is too narrow to render the box-drawing frame.
+ * When true, render content without ║ borders (graceful degradation).
+ */
+const isNarrowTerminal = () => getTerminalWidth() < FRAME_OUTER;
+
+/**
  * Strip ANSI escape codes from a string to get its visual/printed width.
  */
 const stripAnsi = (s) => s.replace(/\x1b\[[0-9;]*m/g, '');
@@ -43,6 +54,9 @@ const stripAnsi = (s) => s.replace(/\x1b\[[0-9;]*m/g, '');
  * frameLine("Hello") → "║ Hello                                    ║"
  */
 const frameLine = (content = '') => {
+  if (isNarrowTerminal()) {
+    return ' ' + content;
+  }
   const visual = stripAnsi(content);
   const available = FRAME_INNER - 2; // 2 spaces for left+right padding
   const visLen = visual.length;
@@ -73,6 +87,9 @@ const frameLine = (content = '') => {
  * frameCenter("HELLO") → "║              HELLO                       ║"
  */
 const frameCenter = (content = '') => {
+  if (isNarrowTerminal()) {
+    return ' ' + content;
+  }
   const visual = stripAnsi(content);
   const available = FRAME_INNER - 2;
   const visLen = visual.length;
@@ -82,24 +99,25 @@ const frameCenter = (content = '') => {
   return dim('║') + ' ' + ' '.repeat(leftPad) + content + ' '.repeat(rightPad) + ' ' + dim('║');
 };
 
-/** Top border: ╔══════...══════╗ */
-const frameTop = () => dim('╔' + '═'.repeat(FRAME_INNER) + '╗');
+/** Top border: ╔══════...══════╗ (hidden in narrow mode) */
+const frameTop = () => isNarrowTerminal() ? '' : dim('╔' + '═'.repeat(FRAME_INNER) + '╗');
 
-/** Bottom border: ╚══════...══════╝ */
-const frameBottom = () => dim('╚' + '═'.repeat(FRAME_INNER) + '╝');
+/** Bottom border: ╚══════...══════╝ (hidden in narrow mode) */
+const frameBottom = () => isNarrowTerminal() ? '' : dim('╚' + '═'.repeat(FRAME_INNER) + '╝');
 
-/** Horizontal divider: ╠══════...══════╣ */
-const frameDivider = () => dim('╠' + '═'.repeat(FRAME_INNER) + '╣');
+/** Horizontal divider: ╠══════...══════╣ (hidden in narrow mode) */
+const frameDivider = () => isNarrowTerminal() ? '' : dim('╠' + '═'.repeat(FRAME_INNER) + '╣');
 
-/** Empty line within frame: ║                                          ║ */
-const frameEmpty = () => dim('║') + ' '.repeat(FRAME_INNER) + dim('║');
+/** Empty line within frame: ║                                          ║ (blank line in narrow mode) */
+const frameEmpty = () => isNarrowTerminal() ? '' : dim('║') + ' '.repeat(FRAME_INNER) + dim('║');
 
 /**
  * Center the entire frame within the terminal width.
  * Returns a padding string to prepend to each frame line.
  */
 const frameMargin = () => {
-  const cols = process.stdout.columns || 80;
+  if (isNarrowTerminal()) return '';
+  const cols = getTerminalWidth();
   const margin = Math.max(0, Math.floor((cols - FRAME_OUTER) / 2));
   return ' '.repeat(margin);
 };
@@ -406,7 +424,9 @@ const renderGameScreen = (state, calculateHandTotal, getAvailableActions) => {
   }
 
   // Clear screen + cursor home, write all lines at once
-  const output = '\x1b[2J\x1b[H' + lines.map((l) => margin + l).join('\n') + '\n';
+  // Filter out empty strings from narrow-terminal mode where frame decorations are suppressed
+  const filtered = lines.filter((l) => l !== '');
+  const output = '\x1b[2J\x1b[H' + filtered.map((l) => margin + l).join('\n') + '\n';
   process.stdout.write(output);
 };
 
@@ -430,7 +450,8 @@ const renderWelcomeScreen = () => {
     frameEmpty(),
     frameBottom(),
   ];
-  const output = '\x1b[2J\x1b[H' + lines.map((l) => margin + l).join('\n') + '\n';
+  const filtered = lines.filter((l) => l !== '');
+  const output = '\x1b[2J\x1b[H' + filtered.map((l) => margin + l).join('\n') + '\n';
   process.stdout.write(output);
 };
 
@@ -470,7 +491,8 @@ const renderBettingScreen = (chips, error) => {
   lines.push(frameEmpty());
   lines.push(frameBottom());
 
-  const output = '\x1b[2J\x1b[H' + lines.map((l) => margin + l).join('\n') + '\n';
+  const filtered = lines.filter((l) => l !== '');
+  const output = '\x1b[2J\x1b[H' + filtered.map((l) => margin + l).join('\n') + '\n';
   process.stdout.write(output);
 };
 
@@ -581,7 +603,8 @@ const renderGameOverScreen = (state, getWinRate) => {
     frameBottom(),
   ];
 
-  const output = '\x1b[2J\x1b[H' + lines.map((l) => margin + l).join('\n') + '\n';
+  const filtered = lines.filter((l) => l !== '');
+  const output = '\x1b[2J\x1b[H' + filtered.map((l) => margin + l).join('\n') + '\n';
   process.stdout.write(output);
 };
 
@@ -706,7 +729,7 @@ const renderSplitPlayerArea = (state, calculateHandTotal) => {
 
 export {
   RESET, red, green, yellow, cyan, magenta, bold, dim, formatChips,
-  stripAnsi, FRAME_INNER, FRAME_OUTER,
+  stripAnsi, FRAME_INNER, FRAME_OUTER, getTerminalWidth,
   frameLine, frameCenter, frameTop, frameBottom, frameDivider, frameEmpty, frameMargin,
   renderCard, renderHand, renderHeader, renderStatusBar, renderDealerArea, renderPlayerArea,
   renderActionPrompt, renderResultDisplay, renderGameScreen, renderGameOverScreen,

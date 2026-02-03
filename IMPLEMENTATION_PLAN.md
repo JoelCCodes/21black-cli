@@ -141,16 +141,16 @@ Use Node.js built-in test runner (`node --test`). Tests should be written alongs
 - [x] **4.5 — Dealer logic tests**: Dealer hits below 17, stands on 17, stands on soft 17 (A+6=17 stands, not hits). Also tests for dealerDrawOne: draws card, preserves state, multi-draw sequences, bust scenarios.
 - [x] **4.6 — Bet settlement tests**: All outcomes — player win (1:1), dealer win, push (bet returned), blackjack (3:2 payout: $100 bet → $150 win → $250 total), bust scenarios. Mutual blackjack = push.
 - [x] **4.7 — Bet validation tests**: Min $10, max $500, insufficient chips rejected, valid bet accepted. Non-integer rejected. Zero/negative rejected.
-- [ ] **4.8 — Split tests**: Split creation (matching rank), aces-split auto-stand, independent hand play-through, settlement of both hands independently. 21 on split hand pays 1:1 not 3:2. Split rejected when chips insufficient. Split rejected when ranks don't match.
+- [x] **4.8 — Split tests**: Split creation (matching rank), aces-split auto-stand, independent hand play-through, settlement of both hands independently. 21 on split hand pays 1:1 not 3:2. Split rejected when chips insufficient. Split rejected when ranks don't match.
 - [x] **4.9 — Stats tests**: Verify stats accumulate correctly across multiple rounds. Win rate calculation. Peak chips tracking. Blackjack count.
-- [ ] **4.10 — Deck reshuffle tests**: Verify reshuffle triggers when deck drops below 15 cards. Verify `reshuffled` flag is set. Verify new deck has 52 cards.
+- [x] **4.10 — Deck reshuffle tests**: Verify reshuffle triggers when deck drops below 15 cards. Verify `reshuffled` flag is set. Verify new deck has 52 cards.
 - [x] **4.11 — Action availability tests**: Test `getAvailableActions()` in various states: initial deal (all available if ranks match), after first hit (no double/split), during split (no double/split), at 21 (no hit), when chips < bet (no double/split).
-- [ ] **4.12 — Auto-stand at 21 test**: Verify player auto-stands when hitting to exactly 21.
+- [x] **4.12 — Auto-stand at 21 test**: Verify player auto-stands when hitting to exactly 21.
 - [x] **4.13 — Game over tests**: Verify game over triggers when chips < $10 after settlement.
 
 ### Phase 5: Polish & Edge Cases
 
-- [ ] **5.1 — Terminal width handling**: Detect terminal width via `process.stdout.columns`. Center the 44-char frame within available width. If terminal < 44 columns, render without frame (graceful degradation). Log warning if < 80 columns but still render.
+- [x] **5.1 — Terminal width handling**: Detect terminal width via `process.stdout.columns`. Center the 44-char frame within available width. If terminal < 44 columns, render without frame (graceful degradation). Log warning if < 80 columns but still render.
 - [ ] **5.2 — Input edge cases**: Handle unexpected input gracefully — non-numeric bet input (show error, re-prompt), unknown keys during play (ignore), empty ENTER during betting (re-prompt), negative numbers/zero (show error). No crashes on any input.
 - [ ] **5.3 — Re-shuffle notification**: When `state.reshuffled === true`, render a brief `"♻ Deck reshuffled"` message (dim) above the dealer area. Clear the flag after displaying: `state.reshuffled = false` in the game loop after render.
 - [ ] **5.4 — Final integration test**: Run `node src/index.js` and verify full game loop works end-to-end. Syntax check all files via `node --check`. Run all tests, verify passing.

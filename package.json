@@ -1,9 +1,12 @@
 {
-  "name": "21cli",
+  "name": "21black",
   "version": "0.0.0",
   "description": "A polished CLI blackjack game for the terminal",
   "type": "module",
   "main": "src/index.js",
+  "bin": {
+    "21black": "./src/index.js"
+  },
   "scripts": {
     "start": "node src/index.js",
     "test": "node --test src/**/*.test.js"

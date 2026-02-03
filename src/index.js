@@ -45,7 +45,7 @@ import {
 
 import {
   renderWelcomeScreen, renderBettingScreen, renderGameScreen,
-  renderGameOverScreen,
+  renderGameOverScreen, getTerminalWidth, dim,
 } from './renderer.js';
 
 import * as readline from 'node:readline';
@@ -139,6 +139,13 @@ async function main() {
   state = { ...state, deck: shuffleDeck(createDeck()) };
 
   // ── 3.2 Welcome Flow ──────────────────────────────────────────────
+
+  // Terminal width warning (item 5.1)
+  const termWidth = getTerminalWidth();
+  if (termWidth < 80) {
+    process.stderr.write(dim(`Warning: terminal width is ${termWidth} columns (80 recommended)\n`));
+  }
+
   process.stdout.write(HIDE_CURSOR);
   renderWelcomeScreen();
 
