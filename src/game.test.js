@@ -2388,3 +2388,275 @@ describe('getAvailableActions during split', () => {
     assert.equal(actions.quit, true);
   });
 });
+
+// 1.18 — Split settlement tests
+describe('settleRound with split hands', () => {
+  const card = (rank, suit = '♠') => {
+    let value;
+    if (rank === 'A') value = 11;
+    else if (['J', 'Q', 'K'].includes(rank)) value = 10;
+    else value = parseInt(rank, 10);
+    return { suit, rank, value };
+  };
+
+  const makeSplitSettleState = (hand1Cards, hand1Status, hand2Cards, hand2Status, dealerCards, opts = {}) => {
+    const state = createGameState();
+    const bet = opts.bet || 100;
+    state.dealerHand = dealerCards;
+    state.deck = [];
+    state.bet = bet;
+    state.chips = opts.chips !== undefined ? opts.chips : 800; // 1000 - 100 bet - 100 split bet
+    state.phase = 'dealerTurn';
+    state.splitHands = [
+      { cards: hand1Cards, bet, status: hand1Status },
+      { cards: hand2Cards, bet, status: hand2Status },
+    ];
+    state.activeHandIndex = 0;
+    if (opts.stats) state.stats = { ...state.stats, ...opts.stats };
+    return state;
+  };
+
+  it('both hands win against dealer bust', () => {
+    const state = makeSplitSettleState(
+      [card('8'), card('K')],   // 18
+      'stand',
+      [card('8', '♥'), card('9')], // 17
+      'stand',
+      [card('6'), card('10'), card('K')] // 26 bust
+    );
+    const result = settleRound(state);
+    assert.equal(result.phase, 'result');
+    assert.equal(result.splitHands[0].result.outcome, 'win');
+    assert.equal(result.splitHands[1].result.outcome, 'win');
+    assert.equal(result.splitHands[0].result.chipChange, 100);
+    assert.equal(result.splitHands[1].result.chipChange, 100);
+    // 800 + 100+100 (hand1 bet+win) + 100+100 (hand2 bet+win)
+    assert.equal(result.chips, 1200);
+    assert.equal(result.stats.handsWon, 2);
+    assert.equal(result.stats.handsPlayed, 2);
+  });
+
+  it('both hands lose to dealer', () => {
+    const state = makeSplitSettleState(
+      [card('8'), card('7')],   // 15
+      'stand',
+      [card('8', '♥'), card('6')], // 14
+      'stand',
+      [card('10'), card('K')]   // 20
+    );
+    const result = settleRound(state);
+    assert.equal(result.splitHands[0].result.outcome, 'lose');
+    assert.equal(result.splitHands[1].result.outcome, 'lose');
+    assert.equal(result.splitHands[0].result.chipChange, -100);
+    assert.equal(result.splitHands[1].result.chipChange, -100);
+    // 800 (no winnings, bets already deducted)
+    assert.equal(result.chips, 800);
+    assert.equal(result.stats.handsLost, 2);
+    assert.equal(result.stats.handsPlayed, 2);
+  });
+
+  it('hand 1 wins, hand 2 loses', () => {
+    const state = makeSplitSettleState(
+      [card('8'), card('K')],   // 18
+      'stand',
+      [card('8', '♥'), card('6')], // 14
+      'stand',
+      [card('10'), card('7')]   // 17
+    );
+    const result = settleRound(state);
+    assert.equal(result.splitHands[0].result.outcome, 'win');
+    assert.equal(result.splitHands[1].result.outcome, 'lose');
+    // 800 + 200 (hand1 win) = 1000
+    assert.equal(result.chips, 1000);
+    assert.equal(result.stats.handsWon, 1);
+    assert.equal(result.stats.handsLost, 1);
+    assert.equal(result.stats.handsPlayed, 2);
+  });
+
+  it('hand 1 loses, hand 2 wins', () => {
+    const state = makeSplitSettleState(
+      [card('8'), card('6')],   // 14
+      'stand',
+      [card('8', '♥'), card('K')], // 18
+      'stand',
+      [card('10'), card('5')]   // 15
+    );
+    const result = settleRound(state);
+    assert.equal(result.splitHands[0].result.outcome, 'lose');
+    assert.equal(result.splitHands[1].result.outcome, 'win');
+    assert.equal(result.chips, 1000);
+    assert.equal(result.stats.handsWon, 1);
+    assert.equal(result.stats.handsLost, 1);
+  });
+
+  it('both hands push', () => {
+    const state = makeSplitSettleState(
+      [card('8'), card('10')],  // 18
+      'stand',
+      [card('8', '♥'), card('10', '♥')], // 18
+      'stand',
+      [card('10'), card('8', '♦')]    // 18
+    );
+    const result = settleRound(state);
+    assert.equal(result.splitHands[0].result.outcome, 'push');
+    assert.equal(result.splitHands[1].result.outcome, 'push');
+    // 800 + 100 (push return) + 100 (push return) = 1000
+    assert.equal(result.chips, 1000);
+    assert.equal(result.stats.handsPushed, 2);
+    assert.equal(result.stats.handsPlayed, 2);
+  });
+
+  it('hand 1 wins, hand 2 pushes', () => {
+    const state = makeSplitSettleState(
+      [card('8'), card('K')],      // 18
+      'stand',
+      [card('8', '♥'), card('9')], // 17
+      'stand',
+      [card('10'), card('7')]      // 17
+    );
+    const result = settleRound(state);
+    assert.equal(result.splitHands[0].result.outcome, 'win');
+    assert.equal(result.splitHands[1].result.outcome, 'push');
+    // 800 + 200 (hand1 win) + 100 (hand2 push) = 1100
+    assert.equal(result.chips, 1100);
+    assert.equal(result.stats.handsWon, 1);
+    assert.equal(result.stats.handsPushed, 1);
+  });
+
+  it('hand 1 busts, hand 2 wins', () => {
+    const state = makeSplitSettleState(
+      [card('8'), card('7'), card('K')], // 25 bust
+      'bust',
+      [card('8', '♥'), card('K')],      // 18
+      'stand',
+      [card('10'), card('7')]            // 17
+    );
+    const result = settleRound(state);
+    assert.equal(result.splitHands[0].result.outcome, 'lose');
+    assert.equal(result.splitHands[1].result.outcome, 'win');
+    // 800 + 0 (hand1 bust) + 200 (hand2 win) = 1000
+    assert.equal(result.chips, 1000);
+    assert.equal(result.stats.handsLost, 1);
+    assert.equal(result.stats.handsWon, 1);
+  });
+
+  it('both hands bust — loses both bets even if dealer also busts', () => {
+    const state = makeSplitSettleState(
+      [card('8'), card('7'), card('K')], // 25 bust
+      'bust',
+      [card('8', '♥'), card('6'), card('Q')], // 24 bust
+      'bust',
+      [card('10'), card('6'), card('K')]  // 26 bust
+    );
+    const result = settleRound(state);
+    assert.equal(result.splitHands[0].result.outcome, 'lose');
+    assert.equal(result.splitHands[1].result.outcome, 'lose');
+    // 800 (bets already deducted, both bust)
+    assert.equal(result.chips, 800);
+    assert.equal(result.stats.handsLost, 2);
+  });
+
+  it('21 on split hand pays 1:1 not 3:2 (not blackjack)', () => {
+    const state = makeSplitSettleState(
+      [card('8'), card('3'), card('K')], // 21
+      'stand',
+      [card('8', '♥'), card('9')],      // 17
+      'stand',
+      [card('10'), card('8', '♦')]       // 18
+    );
+    const result = settleRound(state);
+    assert.equal(result.splitHands[0].result.outcome, 'win');
+    assert.equal(result.splitHands[0].result.chipChange, 100); // 1:1 not 3:2
+    assert.equal(result.splitHands[1].result.outcome, 'lose');
+    // No blackjack counted in stats
+    assert.equal(result.stats.blackjacks, 0);
+  });
+
+  it('per-hand results are attached to splitHands', () => {
+    const state = makeSplitSettleState(
+      [card('8'), card('K')],      // 18
+      'stand',
+      [card('8', '♥'), card('6')], // 14
+      'stand',
+      [card('10'), card('6')]      // 16 — but dealer doesn't draw more in settlement
+    );
+    const result = settleRound(state);
+    assert.ok(result.splitHands[0].result);
+    assert.ok(result.splitHands[1].result);
+    assert.ok(result.splitHands[0].result.outcome);
+    assert.ok(result.splitHands[0].result.message);
+    assert.ok('chipChange' in result.splitHands[0].result);
+  });
+
+  it('top-level result has outcome split with total chipChange', () => {
+    const state = makeSplitSettleState(
+      [card('8'), card('K')],      // 18
+      'stand',
+      [card('8', '♥'), card('6')], // 14
+      'stand',
+      [card('10'), card('7')]      // 17
+    );
+    const result = settleRound(state);
+    assert.equal(result.result.outcome, 'split');
+    // hand1 wins +100, hand2 loses -100 = 0 total
+    assert.equal(result.result.chipChange, 0);
+  });
+
+  it('stats accumulate with previous stats', () => {
+    const state = makeSplitSettleState(
+      [card('8'), card('K')],      // 18
+      'stand',
+      [card('8', '♥'), card('9')], // 17
+      'stand',
+      [card('10'), card('5')]      // 15
+    , {
+      stats: { handsPlayed: 5, handsWon: 2, handsLost: 2, handsPushed: 1, blackjacks: 1, peakChips: 1200 }
+    });
+    const result = settleRound(state);
+    assert.equal(result.stats.handsPlayed, 7); // 5 + 2
+    assert.equal(result.stats.handsWon, 4);    // 2 + 2
+    assert.equal(result.stats.blackjacks, 1);  // unchanged
+  });
+
+  it('peak chips tracked correctly during split settlement', () => {
+    const state = makeSplitSettleState(
+      [card('8'), card('K')],      // 18
+      'stand',
+      [card('8', '♥'), card('K', '♥')], // 18
+      'stand',
+      [card('10'), card('5')]      // 15
+    , { chips: 800 }); // both win: 800 + 400 = 1200
+    const result = settleRound(state);
+    assert.equal(result.chips, 1200);
+    assert.equal(result.stats.peakChips, 1200);
+  });
+
+  it('works with different bet amounts ($200 per hand)', () => {
+    const state = makeSplitSettleState(
+      [card('8'), card('K')],      // 18
+      'stand',
+      [card('8', '♥'), card('9')], // 17
+      'stand',
+      [card('10'), card('7')]      // 17
+    , { bet: 200, chips: 600 }); // 1000 - 200 - 200 = 600
+    // hand1 wins: +200, hand2 pushes: return 200
+    const result = settleRound(state);
+    assert.equal(result.splitHands[0].result.chipChange, 200);
+    assert.equal(result.splitHands[1].result.chipChange, 0);
+    // 600 + 400 (hand1) + 200 (hand2 push) = 1200
+    assert.equal(result.chips, 1200);
+  });
+
+  it('non-split settleRound still works normally', () => {
+    const state = createGameState();
+    state.playerHand = [card('K'), card('9')]; // 19
+    state.dealerHand = [card('10'), card('8')]; // 18
+    state.bet = 100;
+    state.chips = 900;
+    state.phase = 'dealerTurn';
+    const result = settleRound(state);
+    assert.equal(result.result.outcome, 'win');
+    assert.equal(result.chips, 1100);
+    assert.equal(result.splitHands, undefined);
+  });
+});

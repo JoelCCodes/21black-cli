@@ -228,7 +228,27 @@ export function getWinRate(stats) {
   return (stats.handsWon / stats.handsPlayed * 100).toFixed(1);
 }
 
+function settleOneHand(playerTotal, playerBust, dealerTotal, bet) {
+  if (playerBust) {
+    return { outcome: 'lose', message: 'Bust!', chipChange: -bet };
+  }
+  if (dealerTotal > 21) {
+    return { outcome: 'win', message: 'Dealer busts!', chipChange: bet };
+  }
+  if (playerTotal > dealerTotal) {
+    return { outcome: 'win', message: 'You win!', chipChange: bet };
+  }
+  if (playerTotal < dealerTotal) {
+    return { outcome: 'lose', message: 'Dealer wins.', chipChange: -bet };
+  }
+  return { outcome: 'push', message: 'Push!', chipChange: 0 };
+}
+
 export function settleRound(state) {
+  if (state.splitHands !== undefined) {
+    return settleSplitRound(state);
+  }
+
   const playerTotal = calculateHandTotal(state.playerHand).total;
   const dealerTotal = calculateHandTotal(state.dealerHand).total;
 
@@ -236,28 +256,24 @@ export function settleRound(state) {
   let outcome, message, chipChange, newChips;
 
   if (dealerTotal > 21) {
-    // Dealer busts — player wins 1:1
     outcome = 'win';
     message = 'Dealer busts!';
     chipChange = state.bet;
-    newChips = state.chips + state.bet + state.bet; // return bet + win
+    newChips = state.chips + state.bet + state.bet;
     stats.handsWon++;
   } else if (playerTotal > dealerTotal) {
-    // Player wins 1:1
     outcome = 'win';
     message = 'You win!';
     chipChange = state.bet;
     newChips = state.chips + state.bet + state.bet;
     stats.handsWon++;
   } else if (playerTotal < dealerTotal) {
-    // Dealer wins — player loses bet (already deducted)
     outcome = 'lose';
     message = 'Dealer wins.';
     chipChange = -state.bet;
     newChips = state.chips;
     stats.handsLost++;
   } else {
-    // Push — return bet
     outcome = 'push';
     message = 'Push!';
     chipChange = 0;
@@ -273,6 +289,45 @@ export function settleRound(state) {
     chips: newChips,
     stats,
     result: { outcome, message, chipChange },
+  };
+}
+
+function settleSplitRound(state) {
+  const dealerTotal = calculateHandTotal(state.dealerHand).total;
+  const stats = { ...state.stats };
+  let newChips = state.chips;
+  let totalChipChange = 0;
+
+  const settledHands = state.splitHands.map(hand => {
+    const playerTotal = calculateHandTotal(hand.cards).total;
+    const playerBust = hand.status === 'bust';
+    const result = settleOneHand(playerTotal, playerBust, dealerTotal, hand.bet);
+
+    stats.handsPlayed++;
+    if (result.outcome === 'win') {
+      stats.handsWon++;
+      newChips += hand.bet + hand.bet; // return bet + winnings
+    } else if (result.outcome === 'lose') {
+      stats.handsLost++;
+      // bet already deducted, no change for bust/loss
+    } else {
+      stats.handsPushed++;
+      newChips += hand.bet; // return bet on push
+    }
+    totalChipChange += result.chipChange;
+
+    return { ...hand, result };
+  });
+
+  stats.peakChips = Math.max(stats.peakChips, newChips);
+
+  return {
+    ...state,
+    phase: 'result',
+    chips: newChips,
+    splitHands: settledHands,
+    stats,
+    result: { outcome: 'split', message: 'Split results', chipChange: totalChipChange },
   };
 }
 

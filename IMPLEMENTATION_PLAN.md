@@ -91,7 +91,7 @@ These decisions resolve conflicts and gaps between specs. Builders must follow t
   This function is used by both the renderer (to dim unavailable actions) and the game loop (to reject invalid inputs).
 - [x] **1.16 — Split logic**: `playerSplit(state)` — only valid per `getAvailableActions`. Deduct additional bet from chips. Create `splitHands` array with two hands, each containing one of the original cards + one newly dealt card. Set `activeHandIndex = 0`. Each hand has `{ cards, bet: originalBet, status: 'playing' }`. Aces split: deal 1 card to each, auto-set status to `'stand'`. No re-splitting.
 - [x] **1.17 — Split hand play-through**: `splitHit(state)` and `splitStand(state)` — act on the active hand. When active hand busts or stands: if `activeHandIndex === 0`, advance to hand 1. When all hands complete (both have status !== 'playing'), advance phase to `'dealerTurn'`. Auto-stand at 21 for split hands too. No double down allowed during split. Also added `splitHit`/`splitStand` booleans to `getAvailableActions()` return value for split-mode action availability.
-- [ ] **1.18 — Split settlement**: Extend `settleRound` to handle split hands. Compare each hand independently against dealer. Each hand wins/loses its own bet. Stats: count each split hand as a separate hand played. Return state with per-hand results in `splitHands[n].result`.
+- [x] **1.18 — Split settlement**: Extend `settleRound` to handle split hands. Compare each hand independently against dealer. Each hand wins/loses its own bet. Stats: count each split hand as a separate hand played. Return state with per-hand results in `splitHands[n].result`.
 
 ### Phase 2: Terminal Renderer (`src/renderer.js`)
 
