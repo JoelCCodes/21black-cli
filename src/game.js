@@ -276,6 +276,30 @@ export function settleRound(state) {
   };
 }
 
+export function placeBet(state, amount) {
+  if (!Number.isInteger(amount) || amount <= 0) {
+    return { valid: false, error: 'Bet must be a whole number greater than zero.' };
+  }
+  if (amount < 10) {
+    return { valid: false, error: 'Minimum bet is $10.' };
+  }
+  if (amount > 500) {
+    return { valid: false, error: 'Maximum bet is $500.' };
+  }
+  if (amount > state.chips) {
+    return { valid: false, error: `You only have $${state.chips}. Bet must be within your chip count.` };
+  }
+  return {
+    valid: true,
+    state: {
+      ...state,
+      bet: amount,
+      chips: state.chips - amount,
+      phase: 'playing',
+    },
+  };
+}
+
 export function dealInitialCards(state) {
   let deck = [...state.deck];
   let reshuffled = state.reshuffled;

@@ -2,7 +2,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createDeck, shuffleDeck, createGameState, calculateHandTotal, dealInitialCards, checkForBlackjack, playerHit, playerStand, playerDouble, isDealerDone, dealerDrawOne, settleRound, getWinRate } from './game.js';
+import { createDeck, shuffleDeck, createGameState, calculateHandTotal, dealInitialCards, checkForBlackjack, playerHit, playerStand, playerDouble, isDealerDone, dealerDrawOne, settleRound, getWinRate, placeBet } from './game.js';
 
 // 4.1 — Deck tests
 describe('createDeck', () => {
@@ -1329,5 +1329,131 @@ describe('getWinRate', () => {
   it('returns string type', () => {
     const stats = { ...createGameState().stats, handsPlayed: 5, handsWon: 3 };
     assert.equal(typeof getWinRate(stats), 'string');
+  });
+});
+
+// 4.7 — Bet validation tests
+describe('placeBet', () => {
+  const makeState = (chips = 1000) => {
+    const state = createGameState();
+    state.chips = chips;
+    state.phase = 'betting';
+    return state;
+  };
+
+  it('accepts a valid bet of $100', () => {
+    const state = makeState(1000);
+    const result = placeBet(state, 100);
+    assert.equal(result.valid, true);
+    assert.equal(result.state.bet, 100);
+    assert.equal(result.state.chips, 900);
+    assert.equal(result.state.phase, 'playing');
+  });
+
+  it('accepts the minimum bet of $10', () => {
+    const state = makeState(1000);
+    const result = placeBet(state, 10);
+    assert.equal(result.valid, true);
+    assert.equal(result.state.bet, 10);
+    assert.equal(result.state.chips, 990);
+  });
+
+  it('accepts the maximum bet of $500', () => {
+    const state = makeState(1000);
+    const result = placeBet(state, 500);
+    assert.equal(result.valid, true);
+    assert.equal(result.state.bet, 500);
+    assert.equal(result.state.chips, 500);
+  });
+
+  it('accepts a bet equal to available chips when under max', () => {
+    const state = makeState(200);
+    const result = placeBet(state, 200);
+    assert.equal(result.valid, true);
+    assert.equal(result.state.chips, 0);
+  });
+
+  it('rejects bet below minimum ($9)', () => {
+    const state = makeState(1000);
+    const result = placeBet(state, 9);
+    assert.equal(result.valid, false);
+    assert.ok(result.error.includes('Minimum'));
+  });
+
+  it('rejects bet above maximum ($501)', () => {
+    const state = makeState(1000);
+    const result = placeBet(state, 501);
+    assert.equal(result.valid, false);
+    assert.ok(result.error.includes('Maximum'));
+  });
+
+  it('rejects bet exceeding available chips', () => {
+    const state = makeState(50);
+    const result = placeBet(state, 100);
+    assert.equal(result.valid, false);
+    assert.ok(result.error.includes('50'));
+  });
+
+  it('rejects non-integer bet (decimal)', () => {
+    const state = makeState(1000);
+    const result = placeBet(state, 50.5);
+    assert.equal(result.valid, false);
+    assert.ok(result.error.includes('whole number'));
+  });
+
+  it('rejects zero bet', () => {
+    const state = makeState(1000);
+    const result = placeBet(state, 0);
+    assert.equal(result.valid, false);
+  });
+
+  it('rejects negative bet', () => {
+    const state = makeState(1000);
+    const result = placeBet(state, -50);
+    assert.equal(result.valid, false);
+  });
+
+  it('rejects NaN', () => {
+    const state = makeState(1000);
+    const result = placeBet(state, NaN);
+    assert.equal(result.valid, false);
+  });
+
+  it('rejects Infinity', () => {
+    const state = makeState(1000);
+    const result = placeBet(state, Infinity);
+    assert.equal(result.valid, false);
+  });
+
+  it('does not mutate original state on valid bet', () => {
+    const state = makeState(1000);
+    const originalChips = state.chips;
+    placeBet(state, 100);
+    assert.equal(state.chips, originalChips);
+    assert.equal(state.bet, 0);
+    assert.equal(state.phase, 'betting');
+  });
+
+  it('does not return state on invalid bet', () => {
+    const state = makeState(1000);
+    const result = placeBet(state, 5);
+    assert.equal(result.state, undefined);
+  });
+
+  it('preserves stats and other state fields on valid bet', () => {
+    const state = makeState(1000);
+    state.stats.handsPlayed = 5;
+    state.stats.handsWon = 3;
+    state.reshuffled = true;
+    const result = placeBet(state, 100);
+    assert.equal(result.state.stats.handsPlayed, 5);
+    assert.equal(result.state.stats.handsWon, 3);
+    assert.equal(result.state.reshuffled, true);
+  });
+
+  it('advances phase to playing on valid bet', () => {
+    const state = makeState(1000);
+    const result = placeBet(state, 100);
+    assert.equal(result.state.phase, 'playing');
   });
 });
