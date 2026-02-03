@@ -544,6 +544,47 @@ const renderResultDisplay = (result) => {
   return lines;
 };
 
+// ─── Game Over Screen (Item 2.15) ────────────────────────────────────
+
+/**
+ * Render the game over screen: final chips, hands played, win rate,
+ * and play again / quit prompt. All within box frame.
+ *
+ * Clears terminal and redraws. Writes directly to process.stdout.
+ *
+ * @param {object} state - game state with chips and stats
+ * @param {function} getWinRate - from game.js, returns win rate string
+ */
+const renderGameOverScreen = (state, getWinRate) => {
+  const margin = frameMargin();
+  const { chips, stats } = state;
+
+  const titleLine = bold(red('GAME OVER'));
+  const chipsLine = `You finished with ${yellow(formatChips(chips))}`;
+  const handsLine = `Hands played: ${stats.handsPlayed}`;
+  const winRateLine = `Win rate: ${getWinRate(stats)}%`;
+  const playAgain = 'Press ENTER to play again';
+  const quitLine = 'Press Q to quit';
+
+  const lines = [
+    frameTop(),
+    frameEmpty(),
+    frameCenter(titleLine),
+    frameEmpty(),
+    frameCenter(chipsLine),
+    frameCenter(handsLine),
+    frameCenter(winRateLine),
+    frameEmpty(),
+    frameCenter(playAgain),
+    frameCenter(dim(quitLine)),
+    frameEmpty(),
+    frameBottom(),
+  ];
+
+  const output = '\x1b[2J\x1b[H' + lines.map((l) => margin + l).join('\n') + '\n';
+  process.stdout.write(output);
+};
+
 // ─── Split Player Area (helper for 2.11, full render in 2.16) ────────
 
 /**
@@ -615,6 +656,6 @@ export {
   stripAnsi, FRAME_INNER, FRAME_OUTER,
   frameLine, frameCenter, frameTop, frameBottom, frameDivider, frameEmpty, frameMargin,
   renderCard, renderHand, renderHeader, renderStatusBar, renderDealerArea, renderPlayerArea,
-  renderActionPrompt, renderResultDisplay, renderGameScreen, renderSplitPlayerArea,
-  renderWelcomeScreen, renderBettingScreen,
+  renderActionPrompt, renderResultDisplay, renderGameScreen, renderGameOverScreen,
+  renderSplitPlayerArea, renderWelcomeScreen, renderBettingScreen,
 };
