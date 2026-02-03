@@ -185,9 +185,31 @@ const renderHeader = () => {
   ];
 };
 
+// ─── Chip/Bet Status Bar (Item 2.7) ─────────────────────────────────
+
+/**
+ * Render the chip/bet status bar.
+ * Chips displayed in yellow, Bet in white.
+ * Layout: "Chips: $1,000          Bet: $50" spread across frame width.
+ * Returns an array of frame lines: status row, divider.
+ */
+const renderStatusBar = (chips, bet) => {
+  const chipsText = `Chips: ${yellow(formatChips(chips))}`;
+  const betText = `Bet: ${formatChips(bet)}`;
+  const chipsVisual = stripAnsi(chipsText).length;
+  const betVisual = stripAnsi(betText).length;
+  const available = FRAME_INNER - 2; // 1 space padding each side
+  const gap = available - chipsVisual - betVisual;
+  const content = chipsText + ' '.repeat(Math.max(1, gap)) + betText;
+  return [
+    frameLine(content),
+    frameDivider(),
+  ];
+};
+
 export {
   RESET, red, green, yellow, cyan, magenta, bold, dim, formatChips,
   stripAnsi, FRAME_INNER, FRAME_OUTER,
   frameLine, frameCenter, frameTop, frameBottom, frameDivider, frameEmpty, frameMargin,
-  renderCard, renderHand, renderHeader,
+  renderCard, renderHand, renderHeader, renderStatusBar,
 };
