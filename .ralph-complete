@@ -1,0 +1,17 @@
+21black - Terminal Blackjack Game (Complete)
+
+Built a full-featured terminal blackjack game in pure Node.js (zero dependencies):
+
+- src/game.js (505 lines): Complete game engine with deck creation, shuffling, dealing,
+  hand evaluation, player actions (hit/stand/double/split), dealer logic, bet settlement,
+  session statistics, and all edge cases.
+
+- src/renderer.js (737 lines): ANSI terminal renderer with card ASCII art, box-frame UI,
+  color-coded displays, welcome/betting/game/result/game-over screens, split hand rendering.
+
+- src/index.js (372 lines): Game loop with readline input, signal handling, dramatic dealer
+  pauses, CLI flags (--help/--version), and graceful terminal management.
+
+- src/game.test.js (2702 lines): 263 tests across 21 suites covering all game logic.
+
+All 57 implementation plan items complete. All tests passing.
