@@ -43,6 +43,20 @@ export function createGameState() {
   };
 }
 
+export function calculateHandTotal(cards) {
+  let total = 0;
+  let aces = 0;
+  for (const card of cards) {
+    total += card.value;
+    if (card.rank === 'A') aces++;
+  }
+  while (total > 21 && aces > 0) {
+    total -= 10;
+    aces--;
+  }
+  return { total, soft: aces > 0 };
+}
+
 export function createDeck() {
   const deck = [];
   for (const suit of SUITS) {

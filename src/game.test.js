@@ -2,7 +2,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createDeck, shuffleDeck, createGameState } from './game.js';
+import { createDeck, shuffleDeck, createGameState, calculateHandTotal } from './game.js';
 
 // 4.1 — Deck tests
 describe('createDeck', () => {
@@ -213,5 +213,113 @@ describe('shuffleDeck', () => {
       results.add(shuffled.map(c => `${c.suit}${c.rank}`).join(','));
     }
     assert.ok(results.size > 1, 'multiple shuffles should produce different orderings');
+  });
+});
+
+// 4.3 — Hand evaluation tests
+describe('calculateHandTotal', () => {
+  const card = (rank, suit = '♠') => {
+    let value;
+    if (rank === 'A') value = 11;
+    else if (['J', 'Q', 'K'].includes(rank)) value = 10;
+    else value = parseInt(rank, 10);
+    return { suit, rank, value };
+  };
+
+  it('calculates basic totals (7 + 5 = 12)', () => {
+    const result = calculateHandTotal([card('7'), card('5')]);
+    assert.equal(result.total, 12);
+    assert.equal(result.soft, false);
+  });
+
+  it('calculates face card totals (K + Q = 20)', () => {
+    const result = calculateHandTotal([card('K'), card('Q')]);
+    assert.equal(result.total, 20);
+    assert.equal(result.soft, false);
+  });
+
+  it('calculates soft hand (A + 6 = soft 17)', () => {
+    const result = calculateHandTotal([card('A'), card('6')]);
+    assert.equal(result.total, 17);
+    assert.equal(result.soft, true);
+  });
+
+  it('demotes ace when total exceeds 21 (A + 6 + 8 = 15)', () => {
+    const result = calculateHandTotal([card('A'), card('6'), card('8')]);
+    assert.equal(result.total, 15);
+    assert.equal(result.soft, false);
+  });
+
+  it('handles multiple aces (A + A = soft 12)', () => {
+    const result = calculateHandTotal([card('A'), card('A')]);
+    assert.equal(result.total, 12);
+    assert.equal(result.soft, true);
+  });
+
+  it('handles three aces (A + A + A = soft 13)', () => {
+    const result = calculateHandTotal([card('A'), card('A'), card('A')]);
+    assert.equal(result.total, 13);
+    assert.equal(result.soft, true);
+  });
+
+  it('detects blackjack (A + K = 21 with 2 cards)', () => {
+    const result = calculateHandTotal([card('A'), card('K')]);
+    assert.equal(result.total, 21);
+    assert.equal(result.soft, true);
+  });
+
+  it('detects blackjack with 10 (A + 10 = 21)', () => {
+    const result = calculateHandTotal([card('A'), card('10')]);
+    assert.equal(result.total, 21);
+    assert.equal(result.soft, true);
+  });
+
+  it('handles bust (K + Q + 5 = 25)', () => {
+    const result = calculateHandTotal([card('K'), card('Q'), card('5')]);
+    assert.equal(result.total, 25);
+    assert.equal(result.soft, false);
+  });
+
+  it('demotes multiple aces when needed (A + A + 9 + K = 21)', () => {
+    const result = calculateHandTotal([card('A'), card('A'), card('9'), card('K')]);
+    assert.equal(result.total, 21);
+    assert.equal(result.soft, false);
+  });
+
+  it('handles empty hand', () => {
+    const result = calculateHandTotal([]);
+    assert.equal(result.total, 0);
+    assert.equal(result.soft, false);
+  });
+
+  it('handles single card', () => {
+    const result = calculateHandTotal([card('7')]);
+    assert.equal(result.total, 7);
+    assert.equal(result.soft, false);
+  });
+
+  it('handles single ace (soft 11)', () => {
+    const result = calculateHandTotal([card('A')]);
+    assert.equal(result.total, 11);
+    assert.equal(result.soft, true);
+  });
+
+  it('handles four aces (A + A + A + A = 14)', () => {
+    const result = calculateHandTotal([card('A'), card('A'), card('A'), card('A')]);
+    assert.equal(result.total, 14);
+    assert.equal(result.soft, true);
+  });
+
+  it('hard 21 is not soft (7 + 7 + 7 = 21)', () => {
+    const result = calculateHandTotal([card('7'), card('7'), card('7')]);
+    assert.equal(result.total, 21);
+    assert.equal(result.soft, false);
+  });
+
+  it('ace demoted then another ace stays high (A + 5 + A + 4 = 21 soft)', () => {
+    // A(11) + 5 + A(11) + 4 = 31 → demote one ace → 21, one ace still at 11
+    const result = calculateHandTotal([card('A'), card('5'), card('A'), card('4')]);
+    assert.equal(result.total, 21);
+    assert.equal(result.soft, true);
   });
 });
