@@ -207,9 +207,64 @@ const renderStatusBar = (chips, bet) => {
   ];
 };
 
+// ─── Dealer Area (Item 2.8) ─────────────────────────────────────────
+
+/**
+ * Render the dealer area: label + cards within frame lines.
+ *
+ * During player turn (phase === 'playing' or 'betting'):
+ *   - Label: "DEALER (showing X)" where X = face-up card value
+ *   - Cards: first card face-up, rest face-down
+ *
+ * After dealer plays (phase === 'dealerTurn', 'result', 'gameOver'):
+ *   - Label: "DEALER (X)" with total, "DEALER (Soft X)" if soft
+ *   - All cards face-up
+ *
+ * @param {object} state - game state with dealerHand and phase
+ * @param {function} calculateHandTotal - from game.js
+ * @returns {string[]} array of frame lines
+ */
+const renderDealerArea = (state, calculateHandTotal) => {
+  const { dealerHand, phase } = state;
+  const lines = [];
+
+  // Determine if dealer hole card is hidden
+  const hideHole = phase === 'playing' || phase === 'betting';
+
+  // Build label
+  let label;
+  if (hideHole) {
+    // Show only the face-up card's value
+    const faceUpCard = dealerHand[0];
+    const showing = faceUpCard ? faceUpCard.value : 0;
+    label = `DEALER (showing ${showing})`;
+  } else {
+    // Show full hand total
+    const { total, soft } = calculateHandTotal(dealerHand);
+    label = soft ? `DEALER (Soft ${total})` : `DEALER (${total})`;
+  }
+
+  lines.push(frameEmpty());
+  lines.push(frameLine(dim(label)));
+
+  // Render cards
+  if (dealerHand.length > 0) {
+    const cardsToRender = dealerHand.map((card, i) => {
+      if (hideHole && i >= 1) return null; // face-down
+      return card;
+    });
+    const cardLines = renderHand(cardsToRender);
+    for (const cl of cardLines) {
+      lines.push(frameLine(cl));
+    }
+  }
+
+  return lines;
+};
+
 export {
   RESET, red, green, yellow, cyan, magenta, bold, dim, formatChips,
   stripAnsi, FRAME_INNER, FRAME_OUTER,
   frameLine, frameCenter, frameTop, frameBottom, frameDivider, frameEmpty, frameMargin,
-  renderCard, renderHand, renderHeader, renderStatusBar,
+  renderCard, renderHand, renderHeader, renderStatusBar, renderDealerArea,
 };
