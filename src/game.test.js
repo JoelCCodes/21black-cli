@@ -2,7 +2,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createDeck, shuffleDeck, createGameState, calculateHandTotal, dealInitialCards, checkForBlackjack, playerHit, playerStand, playerDouble, isDealerDone, dealerDrawOne, settleRound, getWinRate, placeBet, checkGameOver, getAvailableActions } from './game.js';
+import { createDeck, shuffleDeck, createGameState, calculateHandTotal, dealInitialCards, checkForBlackjack, playerHit, playerStand, playerDouble, playerSplit, isDealerDone, dealerDrawOne, settleRound, getWinRate, placeBet, checkGameOver, getAvailableActions } from './game.js';
 
 // 4.1 — Deck tests
 describe('createDeck', () => {
@@ -1703,5 +1703,213 @@ describe('getAvailableActions', () => {
     assert.equal(actions.double, false);
     assert.equal(actions.split, false);
     assert.equal(actions.quit, true);
+  });
+});
+
+// 4.8 — Split tests (playerSplit)
+describe('playerSplit', () => {
+  const card = (rank, suit = '♠') => {
+    let value;
+    if (rank === 'A') value = 11;
+    else if (['J', 'Q', 'K'].includes(rank)) value = 10;
+    else value = parseInt(rank, 10);
+    return { suit, rank, value };
+  };
+
+  const makeState = (playerCards, deckCards, bet = 100) => {
+    const state = createGameState();
+    state.playerHand = playerCards;
+    state.dealerHand = [card('8'), card('9')];
+    state.deck = deckCards;
+    state.bet = bet;
+    state.chips = 900; // 1000 - 100 bet
+    state.phase = 'playing';
+    return state;
+  };
+
+  it('creates two split hands from matching pair', () => {
+    const state = makeState(
+      [card('8'), card('8', '♥')],
+      [card('3'), card('5'), card('K'), card('7')]
+    );
+    const result = playerSplit(state);
+    assert.ok(result.splitHands);
+    assert.equal(result.splitHands.length, 2);
+  });
+
+  it('each hand has the original card plus one dealt card', () => {
+    const eightSpades = card('8');
+    const eightHearts = card('8', '♥');
+    const state = makeState(
+      [eightSpades, eightHearts],
+      [card('3'), card('5'), card('K'), card('7')]
+    );
+    const result = playerSplit(state);
+    // Hand 1 gets first original card + top of deck
+    assert.equal(result.splitHands[0].cards[0].rank, '8');
+    assert.equal(result.splitHands[0].cards[0].suit, '♠');
+    assert.equal(result.splitHands[0].cards.length, 2);
+    // Hand 2 gets second original card + next from deck
+    assert.equal(result.splitHands[1].cards[0].rank, '8');
+    assert.equal(result.splitHands[1].cards[0].suit, '♥');
+    assert.equal(result.splitHands[1].cards.length, 2);
+  });
+
+  it('deducts additional bet from chips', () => {
+    const state = makeState(
+      [card('8'), card('8', '♥')],
+      [card('3'), card('5'), card('K'), card('7')],
+      100
+    );
+    state.chips = 900;
+    const result = playerSplit(state);
+    assert.equal(result.chips, 800); // 900 - 100
+  });
+
+  it('each hand carries the original bet amount', () => {
+    const state = makeState(
+      [card('8'), card('8', '♥')],
+      [card('3'), card('5'), card('K'), card('7')],
+      200
+    );
+    state.chips = 800;
+    const result = playerSplit(state);
+    assert.equal(result.splitHands[0].bet, 200);
+    assert.equal(result.splitHands[1].bet, 200);
+  });
+
+  it('sets activeHandIndex to 0', () => {
+    const state = makeState(
+      [card('8'), card('8', '♥')],
+      [card('3'), card('5'), card('K'), card('7')]
+    );
+    const result = playerSplit(state);
+    assert.equal(result.activeHandIndex, 0);
+  });
+
+  it('each hand has status playing for non-ace split', () => {
+    const state = makeState(
+      [card('8'), card('8', '♥')],
+      [card('3'), card('5'), card('K'), card('7')]
+    );
+    const result = playerSplit(state);
+    assert.equal(result.splitHands[0].status, 'playing');
+    assert.equal(result.splitHands[1].status, 'playing');
+  });
+
+  it('keeps phase as playing for non-ace split', () => {
+    const state = makeState(
+      [card('8'), card('8', '♥')],
+      [card('3'), card('5'), card('K'), card('7')]
+    );
+    const result = playerSplit(state);
+    assert.equal(result.phase, 'playing');
+  });
+
+  it('removes 2 cards from deck (one per hand)', () => {
+    const state = makeState(
+      [card('8'), card('8', '♥')],
+      [card('2'), card('3'), card('5'), card('7')]
+    );
+    const result = playerSplit(state);
+    assert.equal(result.deck.length, 2); // 4 - 2
+  });
+
+  it('aces split: both hands auto-stand', () => {
+    const state = makeState(
+      [card('A'), card('A', '♥')],
+      [card('3'), card('5'), card('K'), card('7')]
+    );
+    const result = playerSplit(state);
+    assert.equal(result.splitHands[0].status, 'stand');
+    assert.equal(result.splitHands[1].status, 'stand');
+  });
+
+  it('aces split: phase advances to dealerTurn', () => {
+    const state = makeState(
+      [card('A'), card('A', '♥')],
+      [card('3'), card('5'), card('K'), card('7')]
+    );
+    const result = playerSplit(state);
+    assert.equal(result.phase, 'dealerTurn');
+  });
+
+  it('aces split: each hand has 2 cards', () => {
+    const state = makeState(
+      [card('A'), card('A', '♥')],
+      [card('3'), card('5'), card('K'), card('7')]
+    );
+    const result = playerSplit(state);
+    assert.equal(result.splitHands[0].cards.length, 2);
+    assert.equal(result.splitHands[1].cards.length, 2);
+  });
+
+  it('does not mutate original state', () => {
+    const state = makeState(
+      [card('8'), card('8', '♥')],
+      [card('3'), card('5'), card('K'), card('7')]
+    );
+    const originalChips = state.chips;
+    const originalDeckLen = state.deck.length;
+    const originalHandLen = state.playerHand.length;
+    playerSplit(state);
+    assert.equal(state.chips, originalChips);
+    assert.equal(state.deck.length, originalDeckLen);
+    assert.equal(state.playerHand.length, originalHandLen);
+    assert.equal(state.splitHands, undefined);
+  });
+
+  it('preserves dealer hand and other state fields', () => {
+    const state = makeState(
+      [card('8'), card('8', '♥')],
+      [card('3'), card('5'), card('K'), card('7')]
+    );
+    state.reshuffled = true;
+    const result = playerSplit(state);
+    assert.equal(result.dealerHand.length, 2);
+    assert.equal(result.reshuffled, true);
+    assert.equal(result.bet, 100);
+  });
+
+  it('split with face cards (K + K)', () => {
+    const state = makeState(
+      [card('K'), card('K', '♥')],
+      [card('3'), card('5'), card('7'), card('9')]
+    );
+    const result = playerSplit(state);
+    assert.equal(result.splitHands[0].cards[0].rank, 'K');
+    assert.equal(result.splitHands[1].cards[0].rank, 'K');
+    assert.equal(result.splitHands[0].status, 'playing');
+    assert.equal(result.splitHands[1].status, 'playing');
+  });
+
+  it('works with larger bet ($500 split)', () => {
+    const state = makeState(
+      [card('8'), card('8', '♥')],
+      [card('3'), card('5'), card('K'), card('7')],
+      500
+    );
+    state.chips = 500; // 1000 - 500
+    const result = playerSplit(state);
+    assert.equal(result.chips, 0); // 500 - 500
+    assert.equal(result.splitHands[0].bet, 500);
+    assert.equal(result.splitHands[1].bet, 500);
+  });
+
+  it('dealt cards go to correct hands (deck order)', () => {
+    // Deck: [bottom ... top] — pop() takes from end
+    const topCard = card('K', '♦');
+    const secondCard = card('3', '♣');
+    const state = makeState(
+      [card('8'), card('8', '♥')],
+      [card('2'), card('4'), secondCard, topCard]
+    );
+    const result = playerSplit(state);
+    // First pop (topCard) goes to hand 1
+    assert.equal(result.splitHands[0].cards[1].rank, 'K');
+    assert.equal(result.splitHands[0].cards[1].suit, '♦');
+    // Second pop (secondCard) goes to hand 2
+    assert.equal(result.splitHands[1].cards[1].rank, '3');
+    assert.equal(result.splitHands[1].cards[1].suit, '♣');
   });
 });

@@ -307,6 +307,42 @@ export function checkGameOver(state) {
   return state;
 }
 
+export function playerSplit(state) {
+  const deck = [...state.deck];
+  const originalBet = state.bet;
+  const newChips = state.chips - originalBet; // deduct additional bet
+
+  // Deal one card to each split hand
+  const card1 = deck.pop();
+  const card2 = deck.pop();
+
+  const hand1Cards = [state.playerHand[0], card1];
+  const hand2Cards = [state.playerHand[1], card2];
+
+  // Check if splitting aces — auto-stand both hands
+  const isAceSplit = state.playerHand[0].rank === 'A';
+
+  const hand1Status = isAceSplit ? 'stand' : 'playing';
+  const hand2Status = isAceSplit ? 'stand' : 'playing';
+
+  const splitHands = [
+    { cards: hand1Cards, bet: originalBet, status: hand1Status },
+    { cards: hand2Cards, bet: originalBet, status: hand2Status },
+  ];
+
+  // If aces split, both hands are done — advance to dealer turn
+  const phase = isAceSplit ? 'dealerTurn' : 'playing';
+
+  return {
+    ...state,
+    deck,
+    chips: newChips,
+    splitHands,
+    activeHandIndex: 0,
+    phase,
+  };
+}
+
 export function getAvailableActions(state) {
   const playing = state.phase === 'playing';
   const handCards = state.playerHand;
