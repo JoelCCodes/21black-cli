@@ -73,7 +73,7 @@ These decisions resolve conflicts and gaps between specs. Builders must follow t
   ```
 - [x] **1.4 — Hand evaluation**: `calculateHandTotal(cards)` returns `{ total, soft }`. Handles ace optimization: count aces as 11, demote to 1 one-at-a-time if total > 21. `soft` is true when at least one ace is counted as 11.
 - [x] **1.5 — Dealing logic**: `dealInitialCards(state)` — deal 2 cards each to player and dealer from deck. Auto-reshuffle if deck < 15 cards (set `state.reshuffled = true` when this happens). Returns new state with phase set to `'playing'`.
-- [ ] **1.6 — Blackjack detection**: `checkForBlackjack(state)` — check if player and/or dealer have natural 21 after initial deal. Mutual blackjack = push. Player blackjack = 3:2 payout. Dealer blackjack = player loses. Set phase to `'result'` and populate `state.result` if either has blackjack.
+- [x] **1.6 — Blackjack detection**: `checkForBlackjack(state)` — check if player and/or dealer have natural 21 after initial deal. Mutual blackjack = push. Player blackjack = 3:2 payout. Dealer blackjack = player loses. Set phase to `'result'` and populate `state.result` if either has blackjack.
 - [ ] **1.7 — Player actions — Hit**: `playerHit(state)` — draw card, add to player hand, check bust (total > 21 → phase = `'result'`). Also auto-stand if total === 21 (set phase to `'dealerTurn'`). Return new state.
 - [ ] **1.8 — Player actions — Stand**: `playerStand(state)` — set phase to `'dealerTurn'`. Return new state.
 - [ ] **1.9 — Player actions — Double Down**: `playerDouble(state)` — only valid when: (a) initial 2-card hand, (b) player has enough chips to double the bet. Double bet (deduct additional amount from chips), draw exactly 1 card, then auto-stand. If bust, set phase to `'result'`. Return new state.
@@ -118,6 +118,7 @@ All rendering uses `process.stdout.write()` — no `console.log`.
 
 All timing/pauses live here. `game.js` is never imported with I/O side effects.
 
+- [ ] **3.0 — CLI entry point setup**: Add shebang `#!/usr/bin/env node` as first line of `src/index.js`. Make file executable (`chmod +x`). Parse `process.argv` for `--help` (print usage and exit) and `--version` (read version from package.json and exit). All other args or no args launch the game. This enables `21black` command after `npm link`. See `specs/cli-interface.md`.
 - [ ] **3.1 — Readline setup & signal handling**: Configure `readline.createInterface` with `process.stdin/stdout`. Handle raw mode for single-keypress input. Catch SIGINT (Ctrl+C) — restore terminal (disable raw mode, show cursor `\x1b[?25h`), exit cleanly. This must be set up first to prevent broken terminal during development.
 - [ ] **3.2 — Welcome flow**: Show welcome screen, wait for ENTER, transition to betting phase.
 - [ ] **3.3 — Betting input loop**: Show betting screen, read input (numeric or 'Q'). Validate via `placeBet()`. On invalid: show error message, re-prompt. On 'Q': clean exit. On valid: deal cards.
@@ -164,6 +165,7 @@ Use Node.js built-in test runner (`node --test`). Tests should be written alongs
 | `specs/ui-design.md` | Card art, colors, layout, screens, animations |
 | `specs/session-stats.md` | Session statistics tracking |
 | `specs/split-hand-ui.md` | Split hand rendering layout |
+| `specs/cli-interface.md` | CLI command setup, --help, --version |
 
 ## Notes
 

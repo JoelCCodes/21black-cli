@@ -75,6 +75,57 @@ export function createDeck() {
   return deck;
 }
 
+function isBlackjack(hand) {
+  return hand.length === 2 && calculateHandTotal(hand).total === 21;
+}
+
+export function checkForBlackjack(state) {
+  const playerBJ = isBlackjack(state.playerHand);
+  const dealerBJ = isBlackjack(state.dealerHand);
+
+  if (!playerBJ && !dealerBJ) {
+    return state;
+  }
+
+  const stats = { ...state.stats, handsPlayed: state.stats.handsPlayed + 1 };
+
+  if (playerBJ && dealerBJ) {
+    // Mutual blackjack — push, bet returned
+    stats.handsPushed++;
+    return {
+      ...state,
+      phase: 'result',
+      chips: state.chips + state.bet,
+      stats: { ...stats, peakChips: Math.max(stats.peakChips, state.chips + state.bet) },
+      result: { outcome: 'push', message: 'Both have Blackjack — Push!', chipChange: 0 },
+    };
+  }
+
+  if (playerBJ) {
+    // Player blackjack — pays 3:2
+    const payout = Math.round(state.bet * 1.5);
+    const newChips = state.chips + state.bet + payout;
+    stats.handsWon++;
+    stats.blackjacks++;
+    return {
+      ...state,
+      phase: 'result',
+      chips: newChips,
+      stats: { ...stats, peakChips: Math.max(stats.peakChips, newChips) },
+      result: { outcome: 'blackjack', message: 'BLACKJACK!', chipChange: payout },
+    };
+  }
+
+  // Dealer blackjack — player loses
+  stats.handsLost++;
+  return {
+    ...state,
+    phase: 'result',
+    stats,
+    result: { outcome: 'lose', message: 'Dealer has Blackjack!', chipChange: -state.bet },
+  };
+}
+
 export function dealInitialCards(state) {
   let deck = [...state.deck];
   let reshuffled = state.reshuffled;

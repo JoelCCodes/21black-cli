@@ -2,7 +2,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createDeck, shuffleDeck, createGameState, calculateHandTotal, dealInitialCards } from './game.js';
+import { createDeck, shuffleDeck, createGameState, calculateHandTotal, dealInitialCards, checkForBlackjack } from './game.js';
 
 // 4.1 — Deck tests
 describe('createDeck', () => {
@@ -442,5 +442,150 @@ describe('dealInitialCards', () => {
     // deck(48) + player(2) + dealer(2) = 52
     const totalCards = newState.deck.length + newState.playerHand.length + newState.dealerHand.length;
     assert.equal(totalCards, 52);
+  });
+});
+
+// checkForBlackjack tests (item 1.6, part of 4.6)
+describe('checkForBlackjack', () => {
+  const card = (rank, suit = '♠') => {
+    let value;
+    if (rank === 'A') value = 11;
+    else if (['J', 'Q', 'K'].includes(rank)) value = 10;
+    else value = parseInt(rank, 10);
+    return { suit, rank, value };
+  };
+
+  const makeState = (playerCards, dealerCards, bet = 100) => {
+    const state = createGameState();
+    state.playerHand = playerCards;
+    state.dealerHand = dealerCards;
+    state.bet = bet;
+    state.chips = 900; // 1000 - 100 bet
+    state.phase = 'playing';
+    state.deck = shuffleDeck(createDeck());
+    return state;
+  };
+
+  it('returns state unchanged when neither has blackjack', () => {
+    const state = makeState([card('K'), card('5')], [card('8'), card('9')]);
+    const result = checkForBlackjack(state);
+    assert.equal(result, state); // same reference — no change
+    assert.equal(result.phase, 'playing');
+    assert.equal(result.result, null);
+  });
+
+  it('detects player blackjack (A + K)', () => {
+    const state = makeState([card('A'), card('K')], [card('8'), card('9')]);
+    const result = checkForBlackjack(state);
+    assert.equal(result.phase, 'result');
+    assert.equal(result.result.outcome, 'blackjack');
+    assert.equal(result.result.chipChange, 150); // 3:2 on $100
+  });
+
+  it('pays 3:2 for player blackjack ($100 bet → $150 payout)', () => {
+    const state = makeState([card('A'), card('K')], [card('8'), card('9')], 100);
+    state.chips = 900;
+    const result = checkForBlackjack(state);
+    // chips = 900 (remaining) + 100 (bet returned) + 150 (payout) = 1150
+    assert.equal(result.chips, 1150);
+    assert.equal(result.result.chipChange, 150);
+  });
+
+  it('pays 3:2 rounded for odd bet ($50 bet → $75 payout)', () => {
+    const state = makeState([card('A'), card('10')], [card('7'), card('9')], 50);
+    state.chips = 950;
+    const result = checkForBlackjack(state);
+    assert.equal(result.chips, 1075); // 950 + 50 + 75
+    assert.equal(result.result.chipChange, 75);
+  });
+
+  it('rounds 3:2 payout to nearest dollar ($30 bet → $45 payout)', () => {
+    const state = makeState([card('A'), card('J')], [card('5'), card('6')], 30);
+    state.chips = 970;
+    const result = checkForBlackjack(state);
+    assert.equal(result.result.chipChange, 45);
+    assert.equal(result.chips, 1045); // 970 + 30 + 45
+  });
+
+  it('detects dealer blackjack — player loses', () => {
+    const state = makeState([card('K'), card('5')], [card('A'), card('Q')]);
+    const result = checkForBlackjack(state);
+    assert.equal(result.phase, 'result');
+    assert.equal(result.result.outcome, 'lose');
+    assert.equal(result.result.chipChange, -100);
+    // chips stay at 900 (bet already deducted)
+    assert.equal(result.chips, 900);
+  });
+
+  it('detects mutual blackjack — push', () => {
+    const state = makeState([card('A'), card('K')], [card('A'), card('Q')]);
+    const result = checkForBlackjack(state);
+    assert.equal(result.phase, 'result');
+    assert.equal(result.result.outcome, 'push');
+    assert.equal(result.result.chipChange, 0);
+    // chips = 900 + 100 (bet returned) = 1000
+    assert.equal(result.chips, 1000);
+  });
+
+  it('player blackjack with 10 (not face card)', () => {
+    const state = makeState([card('A'), card('10')], [card('8'), card('9')]);
+    const result = checkForBlackjack(state);
+    assert.equal(result.result.outcome, 'blackjack');
+  });
+
+  it('21 with 3+ cards is NOT blackjack', () => {
+    const state = makeState([card('7'), card('7'), card('7')], [card('8'), card('9')]);
+    const result = checkForBlackjack(state);
+    assert.equal(result, state); // unchanged
+  });
+
+  it('updates stats.handsPlayed on player blackjack', () => {
+    const state = makeState([card('A'), card('K')], [card('8'), card('9')]);
+    const result = checkForBlackjack(state);
+    assert.equal(result.stats.handsPlayed, 1);
+    assert.equal(result.stats.handsWon, 1);
+    assert.equal(result.stats.blackjacks, 1);
+  });
+
+  it('updates stats.handsPlayed on dealer blackjack', () => {
+    const state = makeState([card('K'), card('5')], [card('A'), card('Q')]);
+    const result = checkForBlackjack(state);
+    assert.equal(result.stats.handsPlayed, 1);
+    assert.equal(result.stats.handsLost, 1);
+    assert.equal(result.stats.blackjacks, 0);
+  });
+
+  it('updates stats.handsPushed on mutual blackjack', () => {
+    const state = makeState([card('A'), card('K')], [card('A'), card('Q')]);
+    const result = checkForBlackjack(state);
+    assert.equal(result.stats.handsPlayed, 1);
+    assert.equal(result.stats.handsPushed, 1);
+    assert.equal(result.stats.blackjacks, 0);
+  });
+
+  it('updates peakChips on player blackjack win', () => {
+    const state = makeState([card('A'), card('K')], [card('8'), card('9')], 100);
+    state.chips = 900;
+    const result = checkForBlackjack(state);
+    assert.equal(result.stats.peakChips, 1150); // 900 + 100 + 150
+  });
+
+  it('does not mutate original state', () => {
+    const state = makeState([card('A'), card('K')], [card('8'), card('9')]);
+    const originalPhase = state.phase;
+    const originalChips = state.chips;
+    checkForBlackjack(state);
+    assert.equal(state.phase, originalPhase);
+    assert.equal(state.chips, originalChips);
+    assert.equal(state.result, null);
+    assert.equal(state.stats.handsPlayed, 0);
+  });
+
+  it('preserves other state fields', () => {
+    const state = makeState([card('A'), card('K')], [card('8'), card('9')]);
+    state.reshuffled = true;
+    const result = checkForBlackjack(state);
+    assert.equal(result.reshuffled, true);
+    assert.ok(result.deck.length > 0);
   });
 });
