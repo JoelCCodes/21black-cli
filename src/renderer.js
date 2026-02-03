@@ -354,10 +354,129 @@ const renderActionPrompt = (actions, state) => {
   return lines;
 };
 
+// ─── Full Screen Render (Item 2.11) ──────────────────────────────────
+
+/**
+ * Render the full game screen: clear terminal, compose all sections, write once.
+ *
+ * Composes: header → status bar → dealer area → player area → action prompt.
+ * Shows reshuffle notification ("♻ Deck reshuffled") above dealer area if
+ * state.reshuffled is true.
+ *
+ * @param {object} state - full game state
+ * @param {function} calculateHandTotal - from game.js
+ * @param {function} getAvailableActions - from game.js
+ */
+const renderGameScreen = (state, calculateHandTotal, getAvailableActions) => {
+  const margin = frameMargin();
+  const lines = [];
+
+  // Header
+  lines.push(...renderHeader());
+
+  // Status bar
+  lines.push(...renderStatusBar(state.chips, state.bet));
+
+  // Reshuffle notification (dim, above dealer area)
+  if (state.reshuffled) {
+    lines.push(frameLine(dim('♻ Deck reshuffled')));
+  }
+
+  // Dealer area
+  lines.push(...renderDealerArea(state, calculateHandTotal));
+
+  // Player area (normal or split)
+  if (state.splitHands !== undefined) {
+    lines.push(...renderSplitPlayerArea(state, calculateHandTotal));
+  } else {
+    lines.push(...renderPlayerArea(state, calculateHandTotal));
+  }
+
+  lines.push(frameEmpty());
+
+  // Action prompt bar (only during playing phase)
+  if (state.phase === 'playing') {
+    const actions = getAvailableActions(state);
+    lines.push(...renderActionPrompt(actions, state));
+  } else {
+    lines.push(frameBottom());
+  }
+
+  // Clear screen + cursor home, write all lines at once
+  const output = '\x1b[2J\x1b[H' + lines.map((l) => margin + l).join('\n') + '\n';
+  process.stdout.write(output);
+};
+
+// ─── Split Player Area (helper for 2.11, full render in 2.16) ────────
+
+/**
+ * Render split player hands within the frame.
+ * Active hand is bold, inactive hand is dimmed.
+ * Labels: "HAND 1 (X) *active*" / "HAND 2 (X) - Stand/Bust/21"
+ * Hands stacked vertically (safe for all terminal widths).
+ *
+ * @param {object} state - game state with splitHands
+ * @param {function} calculateHandTotal - from game.js
+ * @returns {string[]} array of frame lines
+ */
+const renderSplitPlayerArea = (state, calculateHandTotal) => {
+  const { splitHands, activeHandIndex } = state;
+  const lines = [];
+
+  for (let i = 0; i < splitHands.length; i++) {
+    const hand = splitHands[i];
+    const { total, soft } = calculateHandTotal(hand.cards);
+    const isActive = hand.status === 'playing' && i === activeHandIndex;
+    const isDimmed = !isActive && hand.status !== 'playing';
+
+    // Build label
+    let totalStr = soft ? `Soft ${total}` : `${total}`;
+    let label;
+    if (isActive) {
+      label = bold(`HAND ${i + 1} (${totalStr}) *active*`);
+    } else {
+      const statusLabel = hand.status === 'stand' ? 'Stand'
+        : hand.status === 'bust' ? 'Bust'
+        : hand.status === 'blackjack' ? '21'
+        : hand.status;
+      label = `HAND ${i + 1} (${totalStr}) - ${statusLabel}`;
+      if (isDimmed) label = dim(label);
+    }
+
+    // Show per-hand bet
+    const betStr = `Bet: ${formatChips(hand.bet)}`;
+
+    lines.push(frameEmpty());
+    lines.push(frameLine(label + '  ' + (isDimmed ? dim(betStr) : betStr)));
+
+    // Render cards
+    const cardLines = renderHand(hand.cards, { dimmed: isDimmed });
+    for (const cl of cardLines) {
+      lines.push(frameLine(cl));
+    }
+
+    // Per-hand result if settled
+    if (hand.result) {
+      const r = hand.result;
+      let resultText;
+      if (r.outcome === 'win' || r.outcome === 'blackjack') {
+        resultText = green(`${r.outcome === 'blackjack' ? 'BLACKJACK' : 'WIN'} +${formatChips(r.chipChange)}`);
+      } else if (r.outcome === 'lose' || r.outcome === 'bust') {
+        resultText = red(`${r.outcome === 'bust' ? 'BUST' : 'LOSE'} ${formatChips(r.chipChange)}`);
+      } else {
+        resultText = yellow(`PUSH ${formatChips(0)}`);
+      }
+      lines.push(frameLine(resultText));
+    }
+  }
+
+  return lines;
+};
+
 export {
   RESET, red, green, yellow, cyan, magenta, bold, dim, formatChips,
   stripAnsi, FRAME_INNER, FRAME_OUTER,
   frameLine, frameCenter, frameTop, frameBottom, frameDivider, frameEmpty, frameMargin,
   renderCard, renderHand, renderHeader, renderStatusBar, renderDealerArea, renderPlayerArea,
-  renderActionPrompt,
+  renderActionPrompt, renderGameScreen, renderSplitPlayerArea,
 };
