@@ -92,14 +92,29 @@ function waitForKey() {
   return new Promise((resolve) => {
     if (process.stdin.isTTY) process.stdin.setRawMode(true);
     process.stdin.resume();
-    process.stdin.once('data', (data) => {
+
+    const onData = (data) => {
+      cleanup();
       const key = data.toString();
       // Ctrl+C in raw mode comes as \x03
       if (key === '\x03') cleanExit(0);
+      resolve(key);
+    };
+
+    const onEnd = () => {
+      cleanup();
+      cleanExit(0);
+    };
+
+    function cleanup() {
+      process.stdin.removeListener('data', onData);
+      process.stdin.removeListener('end', onEnd);
       if (process.stdin.isTTY) process.stdin.setRawMode(false);
       process.stdin.pause();
-      resolve(key);
-    });
+    }
+
+    process.stdin.once('data', onData);
+    process.stdin.once('end', onEnd);
   });
 }
 
@@ -183,7 +198,11 @@ async function main() {
         continue;
       }
 
-      // Parse numeric bet
+      // Parse numeric bet — reject hex (0x), octal (0o), binary (0b), and other non-decimal formats
+      if (!/^[+-]?\d+(\.\d+)?$/.test(input)) {
+        betError = 'Enter a whole number.';
+        continue;
+      }
       const amount = Number(input);
       if (!Number.isFinite(amount) || !Number.isInteger(amount)) {
         betError = 'Enter a whole number.';
