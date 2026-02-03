@@ -934,6 +934,46 @@ describe('playerDouble', () => {
     assert.equal(result.bet, 1000);
     assert.equal(result.chips, 0); // 500 - 500
   });
+
+  it('is rejected by getAvailableActions when chips insufficient', () => {
+    const state = makeState([card('5'), card('6')], [card('3')], 100);
+    state.chips = 50; // less than bet, cannot double
+    const actions = getAvailableActions(state);
+    assert.equal(actions.double, false);
+    assert.equal(actions.hit, true);
+    assert.equal(actions.stand, true);
+  });
+
+  it('is rejected by getAvailableActions after first hit (3-card hand)', () => {
+    const state = makeState([card('5'), card('3'), card('2')], [card('4')], 100);
+    const actions = getAvailableActions(state);
+    assert.equal(actions.double, false);
+    assert.equal(actions.hit, true);
+    assert.equal(actions.stand, true);
+  });
+
+  it('is rejected by getAvailableActions after multiple hits (4-card hand)', () => {
+    const state = makeState([card('2'), card('3'), card('4'), card('2', '♥')], [card('5')], 100);
+    const actions = getAvailableActions(state);
+    assert.equal(actions.double, false);
+  });
+
+  it('is rejected during split play', () => {
+    const state = createGameState();
+    state.phase = 'playing';
+    state.bet = 100;
+    state.chips = 800;
+    state.playerHand = [card('8'), card('3')];
+    state.dealerHand = [card('8', '♥'), card('9')];
+    state.deck = [card('5'), card('6'), card('7')];
+    state.splitHands = [
+      { cards: [card('8'), card('3')], bet: 100, status: 'playing' },
+      { cards: [card('8', '♥'), card('K')], bet: 100, status: 'playing' },
+    ];
+    state.activeHandIndex = 0;
+    const actions = getAvailableActions(state);
+    assert.equal(actions.double, false);
+  });
 });
 
 // 4.5 — Dealer logic tests

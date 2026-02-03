@@ -137,7 +137,7 @@ Use Node.js built-in test runner (`node --test`). Tests should be written alongs
 - [x] **4.1 — Deck tests**: Verify 52 cards, correct suits/ranks/values, no duplicates. Verify card object shape `{ suit, rank, value }`.
 - [x] **4.2 — Shuffle tests**: Verify shuffle produces different order (statistical — run multiple times), maintains all 52 cards, does not mutate original.
 - [x] **4.3 — Hand evaluation tests**: Test basic totals (e.g., 7+5=12), soft hands (A+6=soft 17), ace demotion (A+6+8=15 not 25), multiple aces (A+A=12 soft), blackjack detection (A+K=21 with 2 cards).
-- [ ] **4.4 — Player action tests**: Hit draws card + busts correctly. Stand advances phase. Double: doubles bet, draws exactly 1 card, auto-stands. Double rejected when chips insufficient. Double rejected after first hit.
+- [x] **4.4 — Player action tests**: Hit draws card + busts correctly. Stand advances phase. Double: doubles bet, draws exactly 1 card, auto-stands. Double rejected when chips insufficient. Double rejected after first hit.
 - [x] **4.5 — Dealer logic tests**: Dealer hits below 17, stands on 17, stands on soft 17 (A+6=17 stands, not hits). Also tests for dealerDrawOne: draws card, preserves state, multi-draw sequences, bust scenarios.
 - [x] **4.6 — Bet settlement tests**: All outcomes — player win (1:1), dealer win, push (bet returned), blackjack (3:2 payout: $100 bet → $150 win → $250 total), bust scenarios. Mutual blackjack = push.
 - [x] **4.7 — Bet validation tests**: Min $10, max $500, insufficient chips rejected, valid bet accepted. Non-integer rejected. Zero/negative rejected.
