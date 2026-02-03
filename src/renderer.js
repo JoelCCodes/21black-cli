@@ -585,13 +585,18 @@ const renderGameOverScreen = (state, getWinRate) => {
   process.stdout.write(output);
 };
 
-// ─── Split Player Area (helper for 2.11, full render in 2.16) ────────
+// ─── Split Player Area (Item 2.16) ───────────────────────────────────
 
 /**
  * Render split player hands within the frame.
  * Active hand is bold, inactive hand is dimmed.
  * Labels: "HAND 1 (X) *active*" / "HAND 2 (X) - Stand/Bust/21"
- * Hands stacked vertically (safe for all terminal widths).
+ *
+ * Primary: side-by-side layout (hands rendered next to each other).
+ * Fallback: vertical stacking (when hands are too wide to fit side-by-side).
+ *
+ * Side-by-side fits when: hand1Width + MIN_GAP + hand2Width <= usable width (40).
+ * Each hand's card width = numCards * 7 + (numCards - 1) for spacing.
  *
  * @param {object} state - game state with splitHands
  * @param {function} calculateHandTotal - from game.js
@@ -599,16 +604,17 @@ const renderGameOverScreen = (state, getWinRate) => {
  */
 const renderSplitPlayerArea = (state, calculateHandTotal) => {
   const { splitHands, activeHandIndex } = state;
-  const lines = [];
+  const USABLE = FRAME_INNER - 2; // 40 chars of content inside ║ ... ║
+  const MIN_GAP = 2;
 
-  for (let i = 0; i < splitHands.length; i++) {
-    const hand = splitHands[i];
+  // ── Build per-hand metadata ──────────────────────────────────────
+
+  const handData = splitHands.map((hand, i) => {
     const { total, soft } = calculateHandTotal(hand.cards);
     const isActive = hand.status === 'playing' && i === activeHandIndex;
     const isDimmed = !isActive && hand.status !== 'playing';
 
-    // Build label
-    let totalStr = soft ? `Soft ${total}` : `${total}`;
+    const totalStr = soft ? `Soft ${total}` : `${total}`;
     let label;
     if (isActive) {
       label = bold(`HAND ${i + 1} (${totalStr}) *active*`);
@@ -621,22 +627,16 @@ const renderSplitPlayerArea = (state, calculateHandTotal) => {
       if (isDimmed) label = dim(label);
     }
 
-    // Show per-hand bet
     const betStr = `Bet: ${formatChips(hand.bet)}`;
+    const styledBet = isDimmed ? dim(betStr) : betStr;
 
-    lines.push(frameEmpty());
-    lines.push(frameLine(label + '  ' + (isDimmed ? dim(betStr) : betStr)));
-
-    // Render cards
+    const numCards = hand.cards.length;
+    const cardWidth = numCards > 0 ? numCards * 7 + (numCards - 1) : 0;
     const cardLines = renderHand(hand.cards, { dimmed: isDimmed });
-    for (const cl of cardLines) {
-      lines.push(frameLine(cl));
-    }
 
-    // Per-hand result if settled
+    let resultText = null;
     if (hand.result) {
       const r = hand.result;
-      let resultText;
       if (r.outcome === 'win' || r.outcome === 'blackjack') {
         resultText = green(`${r.outcome === 'blackjack' ? 'BLACKJACK' : 'WIN'} +${formatChips(r.chipChange)}`);
       } else if (r.outcome === 'lose' || r.outcome === 'bust') {
@@ -644,10 +644,63 @@ const renderSplitPlayerArea = (state, calculateHandTotal) => {
       } else {
         resultText = yellow(`PUSH ${formatChips(0)}`);
       }
-      lines.push(frameLine(resultText));
     }
+
+    return { label, styledBet, cardWidth, cardLines, resultText, isDimmed };
+  });
+
+  // ── Determine layout mode ────────────────────────────────────────
+
+  const h1 = handData[0];
+  const h2 = handData[1];
+  const sideBySideFits = h2 !== undefined &&
+    (h1.cardWidth + MIN_GAP + h2.cardWidth <= USABLE);
+
+  // ── Side-by-side rendering ───────────────────────────────────────
+
+  if (sideBySideFits) {
+    const lines = [];
+    const gap = USABLE - h1.cardWidth - h2.cardWidth;
+
+    const padTo = (str, width) => {
+      const vis = stripAnsi(str).length;
+      return vis >= width ? str : str + ' '.repeat(width - vis);
+    };
+
+    lines.push(frameEmpty());
+    lines.push(frameLine(padTo(h1.label, h1.cardWidth + gap) + h2.label));
+    lines.push(frameLine(padTo(h1.styledBet, h1.cardWidth + gap) + h2.styledBet));
+
+    for (let row = 0; row < 5; row++) {
+      const left = h1.cardLines[row] || '';
+      const leftVis = stripAnsi(left).length;
+      const padding = (h1.cardWidth + gap) - leftVis;
+      const right = h2.cardLines[row] || '';
+      lines.push(frameLine(left + ' '.repeat(Math.max(0, padding)) + right));
+    }
+
+    if (h1.resultText || h2.resultText) {
+      const r1 = h1.resultText || '';
+      const r2 = h2.resultText || '';
+      lines.push(frameLine(padTo(r1, h1.cardWidth + gap) + r2));
+    }
+
+    return lines;
   }
 
+  // ── Vertical stacking fallback ───────────────────────────────────
+
+  const lines = [];
+  for (const h of handData) {
+    lines.push(frameEmpty());
+    lines.push(frameLine(h.label + '  ' + h.styledBet));
+    for (const cl of h.cardLines) {
+      lines.push(frameLine(cl));
+    }
+    if (h.resultText) {
+      lines.push(frameLine(h.resultText));
+    }
+  }
   return lines;
 };
 

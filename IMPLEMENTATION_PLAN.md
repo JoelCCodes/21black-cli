@@ -112,7 +112,7 @@ All rendering uses `process.stdout.write()` — no `console.log`.
 - [x] **2.13 — Betting prompt screen**: Render the betting phase: chip count (yellow), input prompt `Place your bet ($10-$500):`. Show `[Q]uit` option. Accept 'Q' to quit from betting screen.
 - [x] **2.14 — Result display**: Large win/loss/push/blackjack message, color-coded: win = green, loss = red, push = yellow, blackjack = bold cyan. Show chip change: `+$150` in green or `-$50` in red. Use `formatChips()`.
 - [x] **2.15 — Game Over screen**: Render game over with: final chips (yellow, formatted), hands played, win rate (`getWinRate(stats)` with `%`), `"Press ENTER to play again"`, `"Press Q to quit"`. All within box frame.
-- [ ] **2.16 — Split hand rendering**: Per `specs/split-hand-ui.md`. Side-by-side layout with labels: `"HAND 1 (X) *active*"`, `"HAND 2 (X) - Stand"`. Active hand in bold, inactive hand dimmed. Show per-hand bet amounts. Vertical stacking fallback if terminal width < threshold. Per-hand result display after settlement (win/loss/push per hand with chip change).
+- [x] **2.16 — Split hand rendering**: Per `specs/split-hand-ui.md`. Side-by-side layout with labels: `"HAND 1 (X) *active*"`, `"HAND 2 (X) - Stand"`. Active hand in bold, inactive hand dimmed. Show per-hand bet amounts. Vertical stacking fallback if terminal width < threshold. Per-hand result display after settlement (win/loss/push per hand with chip change).
 
 ### Phase 3: Game Loop & I/O (`src/index.js`)
 
