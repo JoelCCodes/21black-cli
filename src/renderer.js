@@ -407,6 +407,30 @@ const renderGameScreen = (state, calculateHandTotal, getAvailableActions) => {
   process.stdout.write(output);
 };
 
+// ─── Welcome Screen (Item 2.12) ──────────────────────────────────────
+
+/**
+ * Render the welcome screen: clear terminal, show framed title + prompt.
+ * ♠ ♥ BLACKJACK 21 ♣ ♦ centered, "Press ENTER to play" below.
+ * Writes directly to process.stdout.
+ */
+const renderWelcomeScreen = () => {
+  const margin = frameMargin();
+  const title = `♠ ${red('♥')} ${bold('BLACKJACK 21')} ♣ ${red('♦')}`;
+  const prompt = 'Press ENTER to play';
+  const lines = [
+    frameTop(),
+    frameEmpty(),
+    frameCenter(title),
+    frameEmpty(),
+    frameCenter(prompt),
+    frameEmpty(),
+    frameBottom(),
+  ];
+  const output = '\x1b[2J\x1b[H' + lines.map((l) => margin + l).join('\n') + '\n';
+  process.stdout.write(output);
+};
+
 // ─── Split Player Area (helper for 2.11, full render in 2.16) ────────
 
 /**
@@ -479,4 +503,5 @@ export {
   frameLine, frameCenter, frameTop, frameBottom, frameDivider, frameEmpty, frameMargin,
   renderCard, renderHand, renderHeader, renderStatusBar, renderDealerArea, renderPlayerArea,
   renderActionPrompt, renderGameScreen, renderSplitPlayerArea,
+  renderWelcomeScreen,
 };
