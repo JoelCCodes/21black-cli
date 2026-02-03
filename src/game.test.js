@@ -2,7 +2,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createDeck, shuffleDeck, createGameState, calculateHandTotal, dealInitialCards, checkForBlackjack, playerHit, playerStand, playerDouble, isDealerDone, dealerDrawOne, settleRound, getWinRate, placeBet, checkGameOver } from './game.js';
+import { createDeck, shuffleDeck, createGameState, calculateHandTotal, dealInitialCards, checkForBlackjack, playerHit, playerStand, playerDouble, isDealerDone, dealerDrawOne, settleRound, getWinRate, placeBet, checkGameOver, getAvailableActions } from './game.js';
 
 // 4.1 — Deck tests
 describe('createDeck', () => {
@@ -1547,5 +1547,161 @@ describe('checkGameOver', () => {
     state.result = { outcome: 'win', message: 'You win!', chipChange: 10 };
     const result = checkGameOver(state);
     assert.equal(result.phase, 'result'); // can still play
+  });
+});
+
+// 4.11 — Action availability tests
+describe('getAvailableActions', () => {
+  const card = (rank, suit = '♠') => {
+    let value;
+    if (rank === 'A') value = 11;
+    else if (['J', 'Q', 'K'].includes(rank)) value = 10;
+    else value = parseInt(rank, 10);
+    return { suit, rank, value };
+  };
+
+  const makeState = (playerCards, opts = {}) => {
+    const state = createGameState();
+    state.playerHand = playerCards;
+    state.dealerHand = opts.dealerCards || [card('8'), card('9')];
+    state.deck = opts.deck || shuffleDeck(createDeck());
+    state.bet = opts.bet || 100;
+    state.chips = opts.chips !== undefined ? opts.chips : 900;
+    state.phase = opts.phase || 'playing';
+    if (opts.splitHands !== undefined) state.splitHands = opts.splitHands;
+    return state;
+  };
+
+  it('all actions available on initial 2-card hand with matching ranks and enough chips', () => {
+    const actions = getAvailableActions(makeState([card('8'), card('8', '♥')]));
+    assert.equal(actions.hit, true);
+    assert.equal(actions.stand, true);
+    assert.equal(actions.double, true);
+    assert.equal(actions.split, true);
+    assert.equal(actions.quit, true);
+  });
+
+  it('hit/stand/double available, split NOT available when ranks differ', () => {
+    const actions = getAvailableActions(makeState([card('8'), card('9')]));
+    assert.equal(actions.hit, true);
+    assert.equal(actions.stand, true);
+    assert.equal(actions.double, true);
+    assert.equal(actions.split, false);
+  });
+
+  it('no hit/stand/double/split when phase is not playing', () => {
+    const actions = getAvailableActions(makeState([card('8'), card('9')], { phase: 'result' }));
+    assert.equal(actions.hit, false);
+    assert.equal(actions.stand, false);
+    assert.equal(actions.double, false);
+    assert.equal(actions.split, false);
+    assert.equal(actions.quit, true);
+  });
+
+  it('no hit/stand/double/split in betting phase', () => {
+    const actions = getAvailableActions(makeState([card('8'), card('9')], { phase: 'betting' }));
+    assert.equal(actions.hit, false);
+    assert.equal(actions.stand, false);
+    assert.equal(actions.double, false);
+    assert.equal(actions.split, false);
+    assert.equal(actions.quit, true);
+  });
+
+  it('no hit/stand/double/split in dealerTurn phase', () => {
+    const actions = getAvailableActions(makeState([card('K'), card('7')], { phase: 'dealerTurn' }));
+    assert.equal(actions.hit, false);
+    assert.equal(actions.stand, false);
+    assert.equal(actions.double, false);
+    assert.equal(actions.split, false);
+  });
+
+  it('no double/split after first hit (3-card hand)', () => {
+    const actions = getAvailableActions(makeState([card('5'), card('3'), card('2')]));
+    assert.equal(actions.hit, true);
+    assert.equal(actions.stand, true);
+    assert.equal(actions.double, false);
+    assert.equal(actions.split, false);
+  });
+
+  it('no hit when total is 21 (auto-stand scenario)', () => {
+    // A(11) + K(10) = 21
+    const actions = getAvailableActions(makeState([card('A'), card('K')]));
+    assert.equal(actions.hit, false);
+    assert.equal(actions.stand, true);
+  });
+
+  it('no hit when total is exactly 21 with 3 cards', () => {
+    // 7+7+7 = 21
+    const actions = getAvailableActions(makeState([card('7'), card('7', '♥'), card('7', '♦')]));
+    assert.equal(actions.hit, false);
+    assert.equal(actions.stand, true);
+  });
+
+  it('no double when chips < bet', () => {
+    const actions = getAvailableActions(makeState([card('5'), card('6')], { chips: 50, bet: 100 }));
+    assert.equal(actions.hit, true);
+    assert.equal(actions.stand, true);
+    assert.equal(actions.double, false);
+  });
+
+  it('no split when chips < bet', () => {
+    const actions = getAvailableActions(makeState([card('8'), card('8', '♥')], { chips: 50, bet: 100 }));
+    assert.equal(actions.hit, true);
+    assert.equal(actions.stand, true);
+    assert.equal(actions.split, false);
+  });
+
+  it('double allowed when chips === bet', () => {
+    const actions = getAvailableActions(makeState([card('5'), card('6')], { chips: 100, bet: 100 }));
+    assert.equal(actions.double, true);
+  });
+
+  it('split allowed when chips === bet and ranks match', () => {
+    const actions = getAvailableActions(makeState([card('8'), card('8', '♥')], { chips: 100, bet: 100 }));
+    assert.equal(actions.split, true);
+  });
+
+  it('no double/split/hit/stand during active split', () => {
+    const splitHands = [
+      { cards: [card('8'), card('3')], bet: 100, status: 'playing' },
+      { cards: [card('8', '♥'), card('K')], bet: 100, status: 'playing' },
+    ];
+    const actions = getAvailableActions(makeState([card('8'), card('3')], { splitHands }));
+    assert.equal(actions.hit, false);
+    assert.equal(actions.stand, false);
+    assert.equal(actions.double, false);
+    assert.equal(actions.split, false);
+    assert.equal(actions.quit, true);
+  });
+
+  it('quit is always true regardless of phase', () => {
+    for (const phase of ['welcome', 'betting', 'playing', 'dealerTurn', 'result', 'gameOver']) {
+      const actions = getAvailableActions(makeState([card('8'), card('9')], { phase }));
+      assert.equal(actions.quit, true, `quit should be true in ${phase} phase`);
+    }
+  });
+
+  it('split available with face cards of same rank (K + K)', () => {
+    const actions = getAvailableActions(makeState([card('K'), card('K', '♥')]));
+    assert.equal(actions.split, true);
+  });
+
+  it('split NOT available with same value but different rank (K + Q)', () => {
+    const actions = getAvailableActions(makeState([card('K'), card('Q')]));
+    assert.equal(actions.split, false);
+  });
+
+  it('split available with Aces (A + A)', () => {
+    const actions = getAvailableActions(makeState([card('A'), card('A', '♥')]));
+    assert.equal(actions.split, true);
+  });
+
+  it('returns correct actions for gameOver phase', () => {
+    const actions = getAvailableActions(makeState([], { phase: 'gameOver' }));
+    assert.equal(actions.hit, false);
+    assert.equal(actions.stand, false);
+    assert.equal(actions.double, false);
+    assert.equal(actions.split, false);
+    assert.equal(actions.quit, true);
   });
 });

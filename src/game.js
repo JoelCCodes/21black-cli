@@ -307,6 +307,21 @@ export function checkGameOver(state) {
   return state;
 }
 
+export function getAvailableActions(state) {
+  const playing = state.phase === 'playing';
+  const handCards = state.playerHand;
+  const { total } = playing ? calculateHandTotal(handCards) : { total: 0 };
+  const isSplit = state.splitHands !== undefined;
+
+  return {
+    hit: playing && total < 21 && !isSplit,
+    stand: playing && !isSplit,
+    double: playing && handCards.length === 2 && !isSplit && state.chips >= state.bet,
+    split: playing && handCards.length === 2 && !isSplit && handCards[0].rank === handCards[1].rank && state.chips >= state.bet,
+    quit: true,
+  };
+}
+
 export function dealInitialCards(state) {
   let deck = [...state.deck];
   let reshuffled = state.reshuffled;

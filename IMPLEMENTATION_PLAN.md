@@ -82,7 +82,7 @@ These decisions resolve conflicts and gaps between specs. Builders must follow t
 - [x] **1.12 — Session statistics tracking**: Called within `settleRound`. Update: `handsPlayed++`, `handsWon/Lost/Pushed++` based on outcome, `blackjacks++` if natural BJ, `peakChips = Math.max(peakChips, chips)`. Win rate formula: `(handsWon / handsPlayed * 100).toFixed(1)` with `"0.0"` guard when `handsPlayed === 0`. Export a `getWinRate(stats)` helper.
 - [x] **1.13 — Bet validation**: `placeBet(state, amount)` — validate: (a) integer, (b) >= $10, (c) <= $500, (d) <= available chips. Return `{ valid: true, state: newState }` or `{ valid: false, error: "message" }`. On valid: deduct bet from chips, set `state.bet`, advance phase to `'playing'`.
 - [x] **1.14 — Game over check**: After settlement, if chips < $10 minimum bet → set phase to `'gameOver'`. Called at end of `settleRound` or as a separate `checkGameOver(state)` function.
-- [ ] **1.15 — Action availability helpers**: `getAvailableActions(state)` returns an object `{ hit, stand, double, split, quit }` with boolean values. Logic:
+- [x] **1.15 — Action availability helpers**: `getAvailableActions(state)` returns an object `{ hit, stand, double, split, quit }` with boolean values. Logic:
   - `hit`: phase === 'playing' && total < 21 && not split-completed
   - `stand`: phase === 'playing'
   - `double`: phase === 'playing' && playerHand.length === 2 && !splitHands && chips >= bet
@@ -144,7 +144,7 @@ Use Node.js built-in test runner (`node --test`). Tests should be written alongs
 - [ ] **4.8 — Split tests**: Split creation (matching rank), aces-split auto-stand, independent hand play-through, settlement of both hands independently. 21 on split hand pays 1:1 not 3:2. Split rejected when chips insufficient. Split rejected when ranks don't match.
 - [x] **4.9 — Stats tests**: Verify stats accumulate correctly across multiple rounds. Win rate calculation. Peak chips tracking. Blackjack count.
 - [ ] **4.10 — Deck reshuffle tests**: Verify reshuffle triggers when deck drops below 15 cards. Verify `reshuffled` flag is set. Verify new deck has 52 cards.
-- [ ] **4.11 — Action availability tests**: Test `getAvailableActions()` in various states: initial deal (all available if ranks match), after first hit (no double/split), during split (no double/split), at 21 (no hit), when chips < bet (no double/split).
+- [x] **4.11 — Action availability tests**: Test `getAvailableActions()` in various states: initial deal (all available if ranks match), after first hit (no double/split), during split (no double/split), at 21 (no hit), when chips < bet (no double/split).
 - [ ] **4.12 — Auto-stand at 21 test**: Verify player auto-stands when hitting to exactly 21.
 - [x] **4.13 — Game over tests**: Verify game over triggers when chips < $10 after settlement.
 
