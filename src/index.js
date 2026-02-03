@@ -185,7 +185,7 @@ async function main() {
     // ── 3.3 Betting Input Loop ─────────────────────────────────────────
     let betError = null;
     while (true) {
-      renderBettingScreen(state.chips, betError, lastBet);
+      renderBettingScreen(state.chips, betError, lastBet, state.stats);
       process.stdout.write(SHOW_CURSOR);
       const input = await readLine('  > ');
       process.stdout.write(HIDE_CURSOR);

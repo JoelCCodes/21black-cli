@@ -464,7 +464,7 @@ const renderWelcomeScreen = () => {
  * @param {number} chips - current chip count
  * @param {string} [error] - optional error message to display (e.g., invalid bet)
  */
-const renderBettingScreen = (chips, error, lastBet = 0) => {
+const renderBettingScreen = (chips, error, lastBet = 0, stats = null) => {
   const margin = frameMargin();
   const title = `♠ ${bold('BLACKJACK 21')} ♠`;
   const chipsLine = `Chips: ${yellow(formatChips(chips))}`;
@@ -481,9 +481,40 @@ const renderBettingScreen = (chips, error, lastBet = 0) => {
     frameEmpty(),
     frameCenter(chipsLine),
     frameEmpty(),
-    frameCenter(promptLine),
-    frameEmpty(),
   ];
+
+  // ── Analytics section (shown after at least 1 hand) ──
+  if (stats && stats.handsPlayed > 0) {
+    const played = stats.handsPlayed;
+    const handWord = played === 1 ? 'hand' : 'hands';
+    const sectionHeader = dim('───') + ` ${played} ${handWord} played ` + dim('───');
+
+    const winRate = (stats.handsWon / played * 100).toFixed(1);
+    const recordLine = green(stats.handsWon + 'W') + '  '
+      + red(stats.handsLost + 'L') + '  '
+      + yellow(stats.handsPushed + 'P')
+      + '  ·  ' + winRate + '%';
+
+    const BAR_WIDTH = 20;
+    const wPx = Math.floor(stats.handsWon / played * BAR_WIDTH);
+    const pPx = Math.floor(stats.handsPushed / played * BAR_WIDTH);
+    const lPx = BAR_WIDTH - wPx - pPx;
+    const bar = green('█'.repeat(wPx)) + yellow('█'.repeat(pPx)) + red('█'.repeat(lPx));
+
+    const bjPeakLine = `BJ: ${stats.blackjacks}`
+      + '  ·  '
+      + `Peak: ${yellow(formatChips(stats.peakChips))}`;
+
+    lines.push(frameCenter(sectionHeader));
+    lines.push(frameEmpty());
+    lines.push(frameCenter(recordLine));
+    lines.push(frameCenter(bar));
+    lines.push(frameCenter(bjPeakLine));
+    lines.push(frameEmpty());
+  }
+
+  lines.push(frameCenter(promptLine));
+  lines.push(frameEmpty());
 
   if (error) {
     lines.push(frameCenter(red(error)));

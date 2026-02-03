@@ -1621,7 +1621,7 @@ describe('getAvailableActions', () => {
     assert.equal(actions.quit, true);
   });
 
-  it('hit/stand/double available, split NOT available when ranks differ', () => {
+  it('hit/stand/double available, split NOT available when values differ', () => {
     const actions = getAvailableActions(makeState([card('8'), card('9')]));
     assert.equal(actions.hit, true);
     assert.equal(actions.stand, true);
@@ -1726,9 +1726,14 @@ describe('getAvailableActions', () => {
     assert.equal(actions.split, true);
   });
 
-  it('split NOT available with same value but different rank (K + Q)', () => {
+  it('split available with same value but different rank (K + Q)', () => {
     const actions = getAvailableActions(makeState([card('K'), card('Q')]));
-    assert.equal(actions.split, false);
+    assert.equal(actions.split, true);
+  });
+
+  it('split available with J + 10 (cross-rank, same value)', () => {
+    const actions = getAvailableActions(makeState([card('J'), card('10')]));
+    assert.equal(actions.split, true);
   });
 
   it('split available with Aces (A + A)', () => {

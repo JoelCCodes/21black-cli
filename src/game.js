@@ -475,7 +475,7 @@ export function getAvailableActions(state) {
     hit: playing && total < 21,
     stand: playing,
     double: playing && handCards.length === 2 && state.chips >= state.bet,
-    split: playing && handCards.length === 2 && handCards[0].rank === handCards[1].rank && state.chips >= state.bet,
+    split: playing && handCards.length === 2 && handCards[0].value === handCards[1].value && state.chips >= state.bet,
     splitHit: false,
     splitStand: false,
     quit: true,

@@ -25,7 +25,7 @@ A complete implementation of casino-style Blackjack (21) playable in the CLI ter
 - **Hit**: Draw another card. Available whenever hand total < 21
 - **Stand**: Keep current hand, end turn
 - **Double Down**: Double the bet, receive exactly 1 more card, then stand. Only available on initial 2-card hand
-- **Split**: If first 2 cards have same rank, split into 2 separate hands. Each hand gets 1 additional card and plays independently. Only 1 split allowed (no re-splitting). Aces split receive only 1 card each
+- **Split**: If first 2 cards have same value, split into 2 separate hands. Each hand gets 1 additional card and plays independently. Only 1 split allowed (no re-splitting). Aces split receive only 1 card each
 
 ### Dealer Rules
 
